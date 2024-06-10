@@ -18,9 +18,9 @@ import sklearn.metrics as mt
 def load_data(uploaded_file,sh,h):
  data = pd.read_excel(uploaded_file,header=h,sheet_name=sh,engine='openpyxl')
  data.columns = data.columns.str.strip()
-  for col in data.columns:
-   if data[col].dtype == 'O':
-    data[col] = data[col].str.strip()    
+ for col in data.columns:
+  if data[col].dtype == 'O':
+   data[col] = data[col].str.strip()    
  return data
  
 
