@@ -37,6 +37,17 @@ def to_excel(df):
  processed_data = output.getvalue()
  return processed_data
 
+@st.cache_data(experimental_allow_widgets=True)
+def modelo(datos, quitar, respuesta):
+ etapar = 0.08
+ lambdapar = 5
+ X = datos.drop(quitar, axis=1)
+ y = datos[respuesta]
+ modeloXGB = XGBRegressor(booster='gblinear', eta=etapar, reg_lambda=lambdapar)
+ modeloXGB.fit(X, y)
+ pred = modeloXGB.predict(X)
+ return (X, y, pred)
+
 
 st.set_page_config(page_title='Modelo Predictivo Resistencia a la Compresión CEMPRO', page_icon=None, layout="wide")
 
@@ -105,16 +116,7 @@ if uploaded_file is not None:
    
    subdatos2 = data[(data['Tipo de Cemento']==tipo2)&(data['Molino']==molino2)]
    
-   def modelo(datos, quitar, respuesta):
-    etapar = 0.08
-    lambdapar = 5
-    X = datos.drop(quitar, axis=1)
-    y = datos[respuesta]
-    modeloXGB = XGBRegressor(booster='gblinear', eta=etapar, reg_lambda=lambdapar)
-    modeloXGB.fit(X, y)
-    pred = modeloXGB.predict(X)
-    return (X, y, pred)
-
+   
    def desplegar():
     (X,y,pred) = modelo(subdatos2, quitar, respuesta)
     fig2, axs2 = plt.subplots()
