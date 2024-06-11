@@ -49,6 +49,22 @@ def modelo(datos, quitar, respuesta):
  return (X, y, pred)
 
 
+def desplegar():
+ (X,y,pred) = modelo(subdatos2, quitar, respuesta)
+ fig2, axs2 = plt.subplots()
+ fig2.set_size_inches(6,6)
+ axs2.scatter(y, pred)
+ st.pyplot(fig2)
+
+ st.write("Porcentaje de Error")
+ st.write(mt.mean_absolute_percentage_error(y, pred))
+ st.write("Coef. de Determinación")
+ st.write(mt.r2_score(y,pred))
+   
+ datosprueba = pd.DataFrame({'ytest':y, 'pred':pred})
+ st.dataframe(datosprueba)
+
+
 st.set_page_config(page_title='Modelo Predictivo Resistencia a la Compresión CEMPRO', page_icon=None, layout="wide")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(['Datos', 'Descripcion Datos', 'Graficos', 'Modelo', 'Descargar Datos'])
@@ -117,20 +133,7 @@ if uploaded_file is not None:
    subdatos2 = data[(data['Tipo de Cemento']==tipo2)&(data['Molino']==molino2)]
    
    
-   def desplegar():
-    (X,y,pred) = modelo(subdatos2, quitar, respuesta)
-    fig2, axs2 = plt.subplots()
-    fig2.set_size_inches(6,6)
-    axs2.scatter(y, pred)
-    st.pyplot(fig2)
-
-    st.write("Porcentaje de Error")
-    st.write(mt.mean_absolute_percentage_error(y, pred))
-    st.write("Coef. de Determinación")
-    st.write(mt.r2_score(y,pred))
    
-    datosprueba = pd.DataFrame({'ytest':y, 'pred':pred})
-    st.dataframe(datosprueba)
 
     
 
@@ -157,7 +160,7 @@ if uploaded_file is not None:
    
   with tab5:
        
-   df_xlsx = to_excel(datosprueba)
+   df_xlsx = to_excel(subdatos2)
    st.download_button(label='📥 Descargar archivo',data=df_xlsx ,file_name= 'df_test.xlsx')
    
 
