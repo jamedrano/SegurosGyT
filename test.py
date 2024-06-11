@@ -129,7 +129,7 @@ if uploaded_file is not None:
     st.pyplot(fig)
    elif tipograf == "Tendencia":
     fig, axs = plt.subplots(2,2)
-    fig.set_size_inches(10,6)
+    fig.set_size_inches(10,4)
     axs[0,0].plot(subdatos['Fecha'],subdatos['R1D'])
     axs[0,0].set_title("1 dia")
     axs[0,0].tick_params(axis='x',labelrotation=30,labelsize=8)
