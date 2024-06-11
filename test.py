@@ -41,6 +41,9 @@ def modelo(datos, quitar, respuesta):
  modeloXGB = XGBRegressor(booster='gblinear', eta=etapar, reg_lambda=lambdapar)
  modeloXGB.fit(X, y)
  pred = modeloXGB.predict(X)
+ 
+ st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
+
  return (X, y, pred)
 
 def desplegar():
