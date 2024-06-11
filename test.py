@@ -158,7 +158,7 @@ if uploaded_file is not None:
   with tab5:
        
    df_xlsx = to_excel(subdatos2)
-   st.download_button(label='📥 Download Current Result',data=df_xlsx ,file_name= 'df_test.xlsx')
+   st.download_button(label='📥 Descargar archivo',data=df_xlsx ,file_name= 'df_test.xlsx')
    
 
    
