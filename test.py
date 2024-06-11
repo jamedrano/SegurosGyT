@@ -157,7 +157,7 @@ if uploaded_file is not None:
    
   with tab5:
        
-   df_xlsx = to_excel(subdatos2)
+   df_xlsx = to_excel(datosprueba)
    st.download_button(label='📥 Descargar archivo',data=df_xlsx ,file_name= 'df_test.xlsx')
    
 
