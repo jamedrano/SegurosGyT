@@ -6,11 +6,8 @@ import io
 import pygwalker as pyg
 from io import BytesIO
 from pyxlsb import open_workbook as open_xlsb
-
-
 from xgboost import XGBRegressor
 from xgboost import XGBClassifier
-
 from sklearn.model_selection import train_test_split
 import sklearn.metrics as mt
 
@@ -22,8 +19,6 @@ def load_data(uploaded_file,sh,h):
   if data[col].dtype == 'O':
    data[col] = data[col].str.strip()    
  return data
-
-
 
 def to_excel(df):
  output = BytesIO()
@@ -37,7 +32,6 @@ def to_excel(df):
  processed_data = output.getvalue()
  return processed_data
 
-
 def modelo(datos, quitar, respuesta):
  etapar = 0.08
  lambdapar = 5
@@ -48,19 +42,16 @@ def modelo(datos, quitar, respuesta):
  pred = modeloXGB.predict(X)
  return (X, y, pred)
 
-
 def desplegar():
  (X,y,pred) = modelo(subdatos2, quitar, respuesta)
  fig2, axs2 = plt.subplots()
  fig2.set_size_inches(6,6)
  axs2.scatter(y, pred)
  st.pyplot(fig2)
-
  st.write("Porcentaje de Error")
  st.write(mt.mean_absolute_percentage_error(y, pred))
  st.write("Coef. de Determinación")
- st.write(mt.r2_score(y,pred))
-   
+ st.write(mt.r2_score(y,pred))   
  datosprueba = pd.DataFrame({'ytest':y, 'pred':pred})
  st.dataframe(datosprueba)
 
@@ -77,8 +68,7 @@ if uploaded_file is not None:
   h = st.sidebar.number_input("*Que fila contiene los nombres de columnas?*",0,100)
   
   data = load_data(uploaded_file,sh,h)
- 
-  
+   
   with tab1:
     st.write( '### 1. Datos Cargados ')
     st.dataframe(data, use_container_width=True)
@@ -131,12 +121,7 @@ if uploaded_file is not None:
    edad =  st.radio("** Edad a Predecir **", ["1 dia", "3 dias", "7 dias", "28 dias"])
    
    subdatos2 = data[(data['Tipo de Cemento']==tipo2)&(data['Molino']==molino2)]
-   
-   
-   
-
     
-
    if edad == "1 dia":
     quitar = ['Fecha','Tipo de Cemento','Molino','R1D','R3D','R7D','R28D']
     respuesta = 'R1D'
@@ -151,8 +136,7 @@ if uploaded_file is not None:
     quitar = ['Fecha','Tipo de Cemento','Molino','R7D','R28D']
     respuesta = 'R7D'
     desplegar()
-    
-   
+       
    if edad == "28 dias":
     quitar = ['Fecha','Tipo de Cemento','Molino','R7D','R28D']
     respuesta = 'R28D'
