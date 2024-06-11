@@ -14,7 +14,7 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 import sklearn.metrics as mt
 
-@st.cache_data(experimental_allow_widgets=True)
+
 def load_data(uploaded_file,sh,h):
  data = pd.read_excel(uploaded_file,header=h,sheet_name=sh,engine='openpyxl')
  data.columns = data.columns.str.strip()
@@ -24,7 +24,7 @@ def load_data(uploaded_file,sh,h):
  return data
 
 
-@st.cache_data(experimental_allow_widgets=True)
+
 def to_excel(df):
  output = BytesIO()
  writer = pd.ExcelWriter(output, engine='xlsxwriter')
