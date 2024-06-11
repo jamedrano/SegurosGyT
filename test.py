@@ -10,6 +10,7 @@ from xgboost import XGBRegressor
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 import sklearn.metrics as mt
+import pickle
 
 @st.cache
 def load_data(uploaded_file,sh,h):
