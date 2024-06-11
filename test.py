@@ -37,7 +37,7 @@ def to_excel(df):
  processed_data = output.getvalue()
  return processed_data
 
-@st.cache_data(experimental_allow_widgets=True)
+
 def modelo(datos, quitar, respuesta):
  etapar = 0.08
  lambdapar = 5
