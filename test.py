@@ -64,7 +64,7 @@ def desplegar():
  subset2 =  pegar(subset1, datosprueba)
  st.dataframe(subset2)
  df_xlsx = to_excel(subset2)
- st.download_button(label='📥 Descargar archivo',data=df_xlsx ,file_name= 'df_test.xlsx')
+ st.download_button(label='📥 Descargar datos',data=df_xlsx ,file_name= 'df_test.xlsx')
  
 st.set_page_config(page_title='Modelo Predictivo Resistencia a la Compresión CEMPRO', page_icon=None, layout="wide")
 
