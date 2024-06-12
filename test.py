@@ -21,6 +21,9 @@ def load_data(uploaded_file,sh,h):
    data[col] = data[col].str.strip()    
  return data
 
+def pegar(df1, df2):
+ return pd.concat([df1, df2.set_index(df1.index)], axis=1)
+
 def to_excel(df):
  output = BytesIO()
  writer = pd.ExcelWriter(output, engine='xlsxwriter')
@@ -48,6 +51,7 @@ def modelo(datos, quitar, respuesta):
 
 def desplegar():
  (X,y,pred) = modelo(subdatos2, quitar, respuesta)
+ subset1 = subdatos2.drop(quitar, axis=1)
  fig2, axs2 = plt.subplots()
  fig2.set_size_inches(6,6)
  axs2.scatter(y, pred)
@@ -57,9 +61,11 @@ def desplegar():
  st.write("Coef. de Determinación")
  st.write(mt.r2_score(y,pred))   
  datosprueba = pd.DataFrame({'ytest':y, 'pred':pred})
- st.dataframe(datosprueba)
-
-
+ subset2 =  pegar(subset1, datosprueba)
+ st.dataframe(subset2)
+ df_xlsx = to_excel(subset2)
+ st.download_button(label='📥 Descargar archivo',data=df_xlsx ,file_name= 'df_test.xlsx')
+ 
 st.set_page_config(page_title='Modelo Predictivo Resistencia a la Compresión CEMPRO', page_icon=None, layout="wide")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(['Datos', 'Descripcion Datos', 'Graficos', 'Modelo', 'Descargar Datos'])
