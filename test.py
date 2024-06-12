@@ -68,10 +68,10 @@ def desplegar():
  
 st.set_page_config(page_title='Modelo Predictivo Resistencia a la Compresión CEMPRO', page_icon=None, layout="wide")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(['Datos', 'Descripcion Datos', 'Graficos', 'Modelo', 'Descargar Datos'])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(['Datos', 'Descripcion Datos', 'Graficos', 'Entrenar Modelo', 'Aplicar Modelo'])
 
 st.sidebar.write("****Cargar Archivo de Datos en Excel****")
-uploaded_file = st.sidebar.file_uploader("*Upload file here*")
+uploaded_file = st.sidebar.file_uploader("*Subir Archivo Aqui*")
 
 if uploaded_file is not None:
   sh = st.sidebar.selectbox("*Que hoja contiene los datos?*",pd.ExcelFile(uploaded_file).sheet_names)
@@ -183,9 +183,12 @@ if uploaded_file is not None:
     desplegar()
    
   with tab5:
-       
-   df_xlsx = to_excel(subdatos2)
-   st.download_button(label='📥 Descargar archivo',data=df_xlsx ,file_name= 'df_test.xlsx')
+   modeloprod = st.file_uploader("Cargar Modelo")
+
+   if modeloprod is not None:
+    datosprod = st.file_uploader("Cargar Datos Prod")
+    if datosprod is not None:
+     pass
    
 
    
