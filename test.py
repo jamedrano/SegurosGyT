@@ -178,7 +178,7 @@ if uploaded_file is not None:
     desplegar()
        
    if edad == "28 dias":
-    quitar = ['Fecha','Tipo de Cemento','Molino','R7D','R28D']
+    quitar = ['Fecha','Tipo de Cemento','Molino','R28D']
     respuesta = 'R28D'
     desplegar()
    
