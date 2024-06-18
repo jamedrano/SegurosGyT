@@ -21,6 +21,11 @@ def load_data(uploaded_file,sh,h):
    data[col] = data[col].str.strip()    
  return data
 
+
+#@st.cache
+#def cargar_modelo:
+  
+
 def pegar(df1, df2):
  return pd.concat([df1, df2.set_index(df1.index)], axis=1)
 
@@ -186,9 +191,9 @@ if uploaded_file is not None:
    modeloprod = st.file_uploader("Cargar Modelo")
 
    if modeloprod is not None:
+    modprod = pickle.loads(modeloprod.read())
     datosprod = st.file_uploader("Cargar Datos Prod")
-    if datosprod is not None:
-     modprod = pickle.loads(modeloprod.read())
+    if datosprod is not None:     
      st.write("Model loaded")
      st.write(modprod)
      st.write("Predicting...")  
