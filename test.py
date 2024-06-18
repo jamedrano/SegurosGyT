@@ -195,7 +195,7 @@ if uploaded_file is not None:
    if archivoModelo is not None:
     modeloprod = load_model(archivoModelo)
     st.write("Model loaded")
-    st.write(modelo)
+    st.write(modeloprod)
     
     # datosprod = st.file_uploader("Cargar Datos Prod")
     # if datosprod is not None:     
