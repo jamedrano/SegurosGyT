@@ -21,9 +21,15 @@ def load_data(uploaded_file,sh,h):
    data[col] = data[col].str.strip()    
  return data
 
+@st.cache
+def load_data2(uploaded_file,sh,h):
+ data = pd.read_excel(uploaded_file,header=h,sheet_name=sh,engine='openpyxl')
+ data.columns = data.columns.str.strip()
+ for col in data.columns:
+  if data[col].dtype == 'O':
+   data[col] = data[col].str.strip()    
+ return data
 
-#@st.cache
-#def cargar_modelo:
   
 
 def pegar(df1, df2):
@@ -192,11 +198,13 @@ if uploaded_file is not None:
 
    if modeloprod is not None:
     modprod = pickle.loads(modeloprod.read())
-    datosprod = st.file_uploader("Cargar Datos Prod")
-    if datosprod is not None:     
-     st.write("Model loaded")
-     st.write(modprod)
-     st.write("Predicting...")  
+    st.write("Model loaded")
+    st.write(modprod)
+    # datosprod = st.file_uploader("Cargar Datos Prod")
+    # if datosprod is not None:     
+     
+     
+     # st.write("Predicting...")  
      # st.write(modprod.predict(datosprod))    
      # st.write("Done!")
    
