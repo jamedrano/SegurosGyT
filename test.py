@@ -197,9 +197,10 @@ if uploaded_file is not None:
     st.write("Model loaded")
     st.write(modeloprod)
     
-    # datosprod = st.file_uploader("Cargar Datos Prod")
-    # if datosprod is not None:     
-     
+    datosprod = st.file_uploader("Cargar Datos Prod")
+    if datosprod is not None:     
+     datospred = load_data(datosprod, 'Sheet1', 0)
+     st.dataframe(datospred)
      
      # st.write("Predicting...")  
      # st.write(modprod.predict(datosprod))    
