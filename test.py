@@ -23,9 +23,7 @@ def load_data(uploaded_file,sh,h):
 
 @st.cache
 def load_model(uploaded_file):
- modelo = pickle.loads(uploaded_file.read())
- st.write("Model loaded")
- st.write(modelo)
+ modelo = pickle.loads(uploaded_file.read()) 
  return modelo
  
 
@@ -192,10 +190,13 @@ if uploaded_file is not None:
    
   with tab5:
    archivoModelo = st.file_uploader("Cargar Modelo")
-   modeloprod = load_model(archivoModelo)
+   
 
    if modeloprod is not None:
-    pass
+    modeloprod = load_model(archivoModelo)
+    st.write("Model loaded")
+    st.write(modelo)
+    
     # datosprod = st.file_uploader("Cargar Datos Prod")
     # if datosprod is not None:     
      
