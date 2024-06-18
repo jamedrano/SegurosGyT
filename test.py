@@ -11,6 +11,7 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 import sklearn.metrics as mt
 import pickle
+import xgboost as xgb
 
 @st.cache
 def load_data(uploaded_file,sh,h):
@@ -203,7 +204,7 @@ if uploaded_file is not None:
      st.dataframe(datospred)
      
      st.write("Predicting...")  
-     st.write(modeloprod.predict(datosprod))    
+     st.write(modeloprod.get_booster().predict(xgb.DMatrix(datospred)))    
      # st.write("Done!")
    
 
