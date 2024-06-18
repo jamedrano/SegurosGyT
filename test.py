@@ -188,7 +188,12 @@ if uploaded_file is not None:
    if modeloprod is not None:
     datosprod = st.file_uploader("Cargar Datos Prod")
     if datosprod is not None:
-     pass
+     modprod = pickle.loads(modeloprod.read())
+     st.write("Model loaded")
+     st.write(modprod)
+     st.write("Predicting...")  
+     st.write(modprod.predict(datosprod))    
+     st.write("Done!")
    
 
    
