@@ -192,8 +192,8 @@ if uploaded_file is not None:
      st.write("Model loaded")
      st.write(modprod)
      st.write("Predicting...")  
-     st.write(modprod.predict(datosprod))    
-     st.write("Done!")
+     # st.write(modprod.predict(datosprod))    
+     # st.write("Done!")
    
 
    
