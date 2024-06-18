@@ -202,8 +202,8 @@ if uploaded_file is not None:
      datospred = load_data(datosprod, 'Sheet1', 0)
      st.dataframe(datospred)
      
-     # st.write("Predicting...")  
-     # st.write(modprod.predict(datosprod))    
+     st.write("Predicting...")  
+     st.write(modeloprod.predict(datosprod))    
      # st.write("Done!")
    
 
