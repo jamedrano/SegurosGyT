@@ -23,7 +23,7 @@ def load_data(uploaded_file,sh,h):
 
 @st.cache_resource
 def load_model(uploaded_file):
- modelo = pickle.loads(uploaded_file.read()) 
+ modelo = pd.read_pickle(uploaded_file) 
  return modelo
  
 
