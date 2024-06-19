@@ -7,7 +7,6 @@ import pygwalker as pyg
 from io import BytesIO
 from pyxlsb import open_workbook as open_xlsb
 from xgboost import XGBRegressor
-from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 import sklearn.metrics as mt
 import pickle
@@ -200,12 +199,14 @@ if uploaded_file is not None:
     
     datosprod = st.file_uploader("Cargar Datos Prod")
     if datosprod is not None:     
-     datospred = load_data(datosprod, 'Sheet1', 0)
-     st.dataframe(datospred)
+     datospred = load_data(datosprod, 'Sheet1', 0) 
      
      st.write("Predicting...")  
-     st.write(modeloprod.get_booster().predict(xgb.DMatrix(datospred)))    
-     # st.write("Done!")
+     ypred = modeloprod.get_booster().predict(xgb.DMatrix(datospred))    
+     resultados = pegar(datospred, ypred)
+     st.dataframe(resultados)
+     resulta2 = to_excel(resultados)
+     st.download_button(label='📥Descargar resultados',data=resulta2 ,file_name= 'resultados.xlsx')
    
 
    
