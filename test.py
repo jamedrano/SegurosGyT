@@ -202,8 +202,9 @@ if uploaded_file is not None:
      datospred = load_data(datosprod, 'Sheet1', 0) 
      
      st.write("Predicting...")  
-     ypred = modeloprod.get_booster().predict(xgb.DMatrix(datospred))    
-     resultados = pd.concat(datospred, ypred, axis=1)
+     ypred = modeloprod.get_booster().predict(xgb.DMatrix(datospred))
+     ypred2 = pd.DataFrame({'ypred':ypred})
+     resultados = pegar(datospred, ypred2)
      st.dataframe(resultados)
      resulta2 = to_excel(resultados)
      st.download_button(label='📥Descargar resultados',data=resulta2 ,file_name= 'resultados.xlsx')
@@ -212,5 +213,5 @@ if uploaded_file is not None:
    
   
     
-    
+ 
     
