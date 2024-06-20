@@ -21,7 +21,7 @@ def load_data(uploaded_file,sh,h):
    data[col] = data[col].str.strip()    
  return data
 
-@st.cache_resource
+#@st.cache_resource
 def load_model(uploaded_file):
  modelo = pd.read_pickle(uploaded_file)
  return modelo
