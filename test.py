@@ -81,7 +81,7 @@ uploaded_file = st.sidebar.file_uploader("*Subir Archivo Aqui*")
 
 if uploaded_file is not None:
   sh = st.sidebar.selectbox("*Que hoja contiene los datos?*",pd.ExcelFile(uploaded_file).sheet_names)
-  h = st.sidebar.number_input("*Que fila contiene los nombres de columnas?*",0,100)
+  h = 0
   
   data = load_data(uploaded_file,sh,h)
    
