@@ -50,9 +50,11 @@ def modelo(datos, quitar, respuesta):
  modeloXGB = XGBRegressor(booster='gblinear', eta=etapar, reg_lambda=lambdapar)
  modeloXGB.fit(X, y)
  pred = modeloXGB.predict(X)
- sorted_idx = modeloXGB.feature_importances_.argsort()
- vars = modeloXGB.feature_names[sorted_idx]
- impor =  modeloXGB.feature_importances_[sorted_idx]
+ 
+ features = modeloXGB.get_booster().feature_names
+ importances = modeloXGB.feature_importances_
+ impo_df = pd.DataFrame(zip(features, importances), columns=['feature', 'importance']).set_index('feature')
+ 
  st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
 
  return (X, y, pred)
