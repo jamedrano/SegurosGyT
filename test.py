@@ -72,7 +72,7 @@ def desplegar():
  fig2.set_size_inches(6,6)
  ax1.scatter(y, pred)
  ax2.barh(y_pos,impo_df['importance'])
- ax2.set_yticks(y_pos,impo_df.index)
+ # ax2.set_yticks(y_pos,impo_df.index)
  st.pyplot(fig2)
 
   
