@@ -72,7 +72,8 @@ def desplegar():
  # axs2[0,1].barh(y_pos,impo_df['importance'])
  # axs2[0,1].set_yticks(y_pos,impo_df['feature'])
  # st.pyplot(fig2)
- 
+
+ st.write(impo_df.columns)
 
  st.dataframe(impo_df)
  
