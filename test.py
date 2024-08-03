@@ -47,12 +47,14 @@ def modelo(datos, quitar, respuesta):
  lambdapar = 5
  X = datos.drop(quitar, axis=1)
  y = datos[respuesta]
- modeloXGB = XGBRegressor(booster='gblinear', eta=etapar, reg_lambda=lambdapar)
+ modeloXGB = XGBRegressor(objective='reg:squarederror')
+ # modeloXGB = XGBRegressor(booster='gblinear', eta=etapar, reg_lambda=lambdapar)
  modeloXGB.fit(X, y)
  pred = modeloXGB.predict(X)
  
  features = modeloXGB.get_booster().feature_names
- importances = modeloXGB.feature_importances_
+ importances = modeloXGB.get_booster().get_score(importance_type='gain')
+ # importances = modeloXGB.feature_importances_
  impo_df = pd.DataFrame(zip(features, importances), columns=['feature', 'importance']).set_index('feature')
  
  st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
