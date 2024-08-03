@@ -57,10 +57,10 @@ def modelo(datos, quitar, respuesta):
  
  st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
 
- return (X, y, pred)
+ return (X, y, pred, impo_df)
 
 def desplegar():
- (X,y,pred) = modelo(subdatos2, quitar, respuesta)
+ (X,y,pred, impo_df) = modelo(subdatos2, quitar, respuesta)
  subset1 = subdatos2.drop(quitar, axis=1)
  fig2, axs2 = plt.subplots()
  fig2.set_size_inches(6,6)
@@ -69,7 +69,7 @@ def desplegar():
  
  # fig3, axs3 = plt.subplots()
  # fig3.set_size_inches(6,6)
- # axs3.barh(vars, impor)
+ # axs3.barh(impo_df['feature'], impo_df['importance'])
  # st.pyplot(fig3)
  
  st.write("Porcentaje de Error")
