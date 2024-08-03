@@ -73,7 +73,7 @@ def desplegar():
  # axs2[0,1].set_yticks(y_pos,impo_df['feature'])
  # st.pyplot(fig2)
 
- st.write(impo_df.columns)
+ st.write(impo_df.index)
 
  st.dataframe(impo_df)
  
