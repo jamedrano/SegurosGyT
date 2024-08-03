@@ -67,10 +67,11 @@ def desplegar():
  axs2.scatter(y, pred)
  st.pyplot(fig2)
  
- fig3, axs3 = plt.subplots()
- fig3.set_size_inches(6,6)
- axs3.barh(impo_df['importance'])
- st.pyplot(fig3)
+ # fig3, axs3 = plt.subplots()
+ # fig3.set_size_inches(6,6)
+ # axs3.barh(impo_df['importance'])
+ # st.pyplot(fig3)
+ st.dataframe(impo_df)
  
  st.write("Porcentaje de Error")
  st.write(mt.mean_absolute_percentage_error(y, pred))
