@@ -69,7 +69,7 @@ def desplegar():
  
  fig3, axs3 = plt.subplots()
  fig3.set_size_inches(6,6)
- axs3.barh(impo_df['feature'], impo_df['importance'])
+ axs3.barh(impo_df['importance'])
  st.pyplot(fig3)
  
  st.write("Porcentaje de Error")
