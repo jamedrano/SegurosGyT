@@ -50,18 +50,26 @@ def modelo(datos, quitar, respuesta):
  modeloXGB = XGBRegressor(booster='gblinear', eta=etapar, reg_lambda=lambdapar)
  modeloXGB.fit(X, y)
  pred = modeloXGB.predict(X)
- 
+ sorted_idx = modeloXGB.feature_importances_.argsort()
+ vars = modeloXGB.feature_names[sorted_idx]
+ impor =  modeloXGB.feature_importances_[sorted_idx]
  st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
 
- return (X, y, pred)
+ return (X, y, pred, vars, impor)
 
 def desplegar():
- (X,y,pred) = modelo(subdatos2, quitar, respuesta)
+ (X,y,pred, vars, impor) = modelo(subdatos2, quitar, respuesta)
  subset1 = subdatos2.drop(quitar, axis=1)
  fig2, axs2 = plt.subplots()
  fig2.set_size_inches(6,6)
  axs2.scatter(y, pred)
  st.pyplot(fig2)
+ 
+ fig3, axs3 = plt.subplots()
+ fig3.set_size_inches(6,6)
+ axs3.barh(vars, impor)
+ st.pyplot(fig3)
+ 
  st.write("Porcentaje de Error")
  st.write(mt.mean_absolute_percentage_error(y, pred))
  st.write("Coef. de Determinación")
