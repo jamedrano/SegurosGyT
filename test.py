@@ -66,12 +66,12 @@ def desplegar():
  impo_df = impo_df.sort_values('importance', ascending=False)
  # y_pos = np.arange(len(impo_df.shape[1]))
  
- fig2, axs2 = plt.subplots(1,2)
- fig2.set_size_inches(6,6)
- axs2[0,0].scatter(y, pred)
+ # fig2, axs2 = plt.subplots(1,2)
+ # fig2.set_size_inches(6,6)
+ # axs2[0,0].scatter(y, pred)
  # axs2[0,1].barh(y_pos,impo_df['importance'])
  # axs2[0,1].set_yticks(y_pos,impo_df['feature'])
- st.pyplot(fig2)
+ # st.pyplot(fig2)
  
 
  st.dataframe(impo_df)
