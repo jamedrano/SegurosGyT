@@ -71,6 +71,7 @@ def desplegar():
  
  fig2, (ax1,ax2) = plt.subplots(2)
  fig2.set_size_inches(6,6)
+ fig2.tight_layout(pad=5.0)
  ax1.scatter(y, pred)
  ax1.set_title("Real vs. Predicción")
  ax1.set_xlabel("Real")
