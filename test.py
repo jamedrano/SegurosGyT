@@ -67,6 +67,7 @@ def desplegar():
 
  impo_df = impo_df.sort_values('importance', ascending=False)
  y_pos = np.arange(len(impo_df.index))
+ st.dataframe(impo_df)
  
  fig2, (ax1,ax2) = plt.subplots(2)
  fig2.set_size_inches(6,6)
