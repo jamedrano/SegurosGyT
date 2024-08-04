@@ -70,7 +70,7 @@ def desplegar():
  fig2, (ax1,ax2) = plt.subplots(2)
  fig2.set_size_inches(6,6)
  ax1.scatter(y, pred)
- # ax2.bar(impo_df.index,impo_df['importance'])
+ ax2.bar(importances.keys(),importances.values())
  # ax2.set_xticks(impo_df['importance'])
  st.pyplot(fig2)
 
