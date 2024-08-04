@@ -72,7 +72,7 @@ def desplegar():
  fig2.set_size_inches(6,6)
  ax1.scatter(y, pred)
  ax2.bar(impor['Variables'],impor['Importancia'])
- ax2.xticks(rotation=45)
+ ax2.tick_params(axis='x', labelrotation=45)
  st.pyplot(fig2)
 
   
