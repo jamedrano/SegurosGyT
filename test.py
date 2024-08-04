@@ -72,12 +72,12 @@ def desplegar():
  fig2, (ax1,ax2) = plt.subplots(2)
  fig2.set_size_inches(6,6)
  ax1.scatter(y, pred)
- ax1.title("Real vs. Predicción")
+ ax1.set_title("Real vs. Predicción")
  ax1.xlabel("Real")
  ax1.ylabel("Pred")
  ax2.bar(impor['Variables'],impor['Importancia'])
  ax2.tick_params(axis='x', labelsize=6, labelrotation=90)
- ax2.title("Importancia de las Variables")
+ ax2.set_title("Importancia de las Variables")
  st.pyplot(fig2)
 
   
