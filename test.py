@@ -66,7 +66,7 @@ def desplegar():
  subset1 = subdatos2.drop(quitar, axis=1)
 
  impor = pd.DataFrame({'Variables':importances.keys(), 'Importancia':importances.values()})
- impor = impor.sort_values('Importancia'. ascending=False)
+ impor = impor.sort_values('Importancia', ascending=False)
  
  fig2, (ax1,ax2) = plt.subplots(2)
  fig2.set_size_inches(6,6)
