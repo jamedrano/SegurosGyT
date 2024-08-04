@@ -52,27 +52,25 @@ def modelo(datos, quitar, respuesta):
  modeloXGB.fit(X, y)
  pred = modeloXGB.predict(X)
  
- features = modeloXGB.get_booster().feature_names
+ # features = modeloXGB.get_booster().feature_names
  importances = modeloXGB.get_booster().get_score(importance_type='gain')
  # importances = modeloXGB.feature_importances_
- impo_df = pd.DataFrame(zip(features, importances), columns=['feature', 'importance']).set_index('feature')
+ # impo_df = pd.DataFrame(zip(features, importances), columns=['feature', 'importance']).set_index('feature')
  
  st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
 
- return (X, y, pred, impo_df)
+ return (X, y, pred, importances)
 
 def desplegar():
- (X,y,pred, impo_df) = modelo(subdatos2, quitar, respuesta)
+ (X,y,pred, importances) = modelo(subdatos2, quitar, respuesta)
  subset1 = subdatos2.drop(quitar, axis=1)
 
- impo_df = impo_df.sort_values('importance', ascending=False)
- y_pos = np.arange(len(impo_df.index))
- st.dataframe(impo_df)
+ st.write(importances)
  
  fig2, (ax1,ax2) = plt.subplots(2)
  fig2.set_size_inches(6,6)
  ax1.scatter(y, pred)
- ax2.bar(impo_df.index,impo_df['importance'])
+ # ax2.bar(impo_df.index,impo_df['importance'])
  # ax2.set_xticks(impo_df['importance'])
  st.pyplot(fig2)
 
