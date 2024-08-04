@@ -95,7 +95,7 @@ def desplegar():
  
 st.set_page_config(page_title='Modelo Predictivo Resistencia a la Compresión CEMPRO', page_icon=None, layout="wide")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(['Datos', 'Descripcion Datos', 'Graficos', 'Entrenar Modelo', 'Aplicar Modelo'])
+tab1, tab2, tab3, tab4 = st.tabs(['Datos', 'Descripcion Datos', 'Graficos', 'Entrenar Modelo'])
 
 st.sidebar.write("****Cargar Archivo de Datos en Excel****")
 uploaded_file = st.sidebar.file_uploader("*Subir Archivo Aqui*")
@@ -209,7 +209,7 @@ if uploaded_file is not None:
     respuesta = 'R28D'
     desplegar()
    
-  with tab5:
+  '''with tab5:
    archivoModelo = st.file_uploader("Cargar Modelo")
    
 
@@ -228,7 +228,7 @@ if uploaded_file is not None:
      resultados = pegar(datospred, ypred2)
      st.dataframe(resultados)
      resulta2 = to_excel(resultados)
-     st.download_button(label='📥Descargar resultados',data=resulta2 ,file_name= 'resultados.xlsx')
+     st.download_button(label='📥Descargar resultados',data=resulta2 ,file_name= 'resultados.xlsx')'''
    
 
    
