@@ -42,6 +42,7 @@ def to_excel(df):
  processed_data = output.getvalue()
  return processed_data
 
+@st.cache
 def modelo(datos, quitar, respuesta):
  etapar = 0.08
  lambdapar = 5
@@ -72,7 +73,7 @@ def desplegar():
  fig2.set_size_inches(6,6)
  ax1.scatter(y, pred)
  ax2.bar(impor['Variables'],impor['Importancia'])
- ax2.tick_params(axis='x', labelrotation=45)
+ ax2.tick_params(axis='x', labelsize=10, labelrotation=45)
  st.pyplot(fig2)
 
   
