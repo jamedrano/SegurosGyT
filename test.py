@@ -209,7 +209,7 @@ if uploaded_file is not None:
     respuesta = 'R28D'
     desplegar()
    
-  '''with tab5:
+  """with tab5:
    archivoModelo = st.file_uploader("Cargar Modelo")
    
 
@@ -228,7 +228,7 @@ if uploaded_file is not None:
      resultados = pegar(datospred, ypred2)
      st.dataframe(resultados)
      resulta2 = to_excel(resultados)
-     st.download_button(label='📥Descargar resultados',data=resulta2 ,file_name= 'resultados.xlsx')'''
+     st.download_button(label='📥Descargar resultados',data=resulta2 ,file_name= 'resultados.xlsx')"""
    
 
    
