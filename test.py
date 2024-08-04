@@ -42,7 +42,7 @@ def to_excel(df):
  processed_data = output.getvalue()
  return processed_data
 
-
+@st.cache_resource
 def modelo(datos, quitar, respuesta):
  etapar = 0.08
  lambdapar = 5
