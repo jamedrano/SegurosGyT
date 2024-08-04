@@ -58,12 +58,13 @@ def modelo(datos, quitar, respuesta):
  # importances = modeloXGB.feature_importances_
  # impo_df = pd.DataFrame(zip(features, importances), columns=['feature', 'importance']).set_index('feature')
  
- st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
+ # st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
 
- return (X, y, pred, importances)
+ return (X, y, pred, importances, modeloXGB)
 
 def desplegar():
- (X,y,pred, importances) = modelo(subdatos2, quitar, respuesta)
+ (X,y,pred, importances, modeloXGB) = modelo(subdatos2, quitar, respuesta)
+ st.download_button("Descargar Modelo",data=pickle.dumps(modeloXGB),file_name="model.pkl")
  subset1 = subdatos2.drop(quitar, axis=1)
 
  impor = pd.DataFrame({'Variables':importances.keys(), 'Importancia':importances.values()})
