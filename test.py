@@ -7,13 +7,13 @@ file_path = 'consolidated_planilla.xlsx'
 data = pd.read_excel(file_path)
 
 # Streamlit App
-st.title("Time Usage Analysis for Commercial Department Staff")
+st.title("Análisis de Tiempo para el Staff del Departamento Comercial")
 
 # Create tabs for different views
-tab1, tab2 = st.tabs(["Data Analysis", "Filtered Data"])
+tab1, tab2 = st.tabs(["Análisis de Datos", "Datos Filtrados"])
 
 with tab1:
-    st.header("Analyze Duration by Area and Position")
+    st.header("Análisis de Duración de Actividades por Area, por Posición y por Tipo de Actividad")
 
     # Add "Todos" to area and position options
     area_options = ["Todos"] + list(data["Area"].unique())
@@ -56,18 +56,24 @@ with tab1:
     st.pyplot(fig)
 
 with tab2:
-    st.header("Filtered Data View")
+    st.header("Resumen Estadístico de Datos por Area y por Posición")
     
-    # Multi-select filters for a broader view
-    selected_areas = st.multiselect("Filter by Area(s)", options=area_options, default=area_options)
-    selected_positions = st.multiselect("Filter by Position(s)", options=position_options, default=position_options)
+    # Dropdowns for filtering
+    selected_area_summary = st.selectbox("Seleccionar Area para Resumen", options=area_options, key="area_summary")
+    selected_position_summary = st.selectbox("Seleccionar Posición para Resumen", options=position_options, key="position_summary")
 
-    # Filter data based on broader multi-selection
-    multi_filtered_data = data[(data["Area"].isin(selected_areas)) & (data["Posicion"].isin(selected_positions))]
-    
-    # Display filtered data
-    st.write(multi_filtered_data)
+    # Filter data for statistical summary based on dropdown selections
+    if selected_area_summary != "Todos" and selected_position_summary != "Todos":
+        summary_data = data[(data["Area"] == selected_area_summary) & (data["Posicion"] == selected_position_summary)]
+    elif selected_area_summary == "Todos" and selected_position_summary != "Todos":
+        summary_data = data[data["Posicion"] == selected_position_summary]
+    elif selected_area_summary != "Todos" and selected_position_summary == "Todos":
+        summary_data = data[data["Area"] == selected_area_summary]
+    else:
+        summary_data = data  # If both are "Todos", select all data
 
-    # Summary Statistics
-    st.subheader("Duration Statistics")
-    st.write(multi_filtered_data["Duración Calculada"].describe())
+    # Display statistical summary for Duración Calculada
+    st.subheader("Statistical Summary")
+    st.write(f"Resumen estadístico para **{selected_area_summary}** - **{selected_position_summary}**:")
+    st.write(summary_data["Duración Calculada"].describe())
+
