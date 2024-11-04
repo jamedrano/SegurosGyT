@@ -17,7 +17,7 @@ with tab1:
 
     # Add "Todos" to area and position options
     area_options = ["Todos"] + list(data["Area"].unique())
-    position_options = ["Todos"] + list(data["Posicion"].Anunique())
+    position_options = ["Todos"] + list(data["Posicion"].unique())
 
     selected_area = st.selectbox("Select Area", options=area_options)
     selected_position = st.selectbox("Select Position", options=position_options)
