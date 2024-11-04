@@ -47,6 +47,7 @@ with tab1:
     st.subheader("Total Duration by Activity Type")
     fig, ax = plt.subplots(figsize=(10, 6))
     duration_by_activity = filtered_data.groupby("Tipo de Actividad")["Duración Calculada"].sum()
+    duration_by_activity = duration_by_activity.sort_values(ascending=False)  # Sort from largest to smallest
     duration_by_activity.plot(kind='bar', ax=ax)
     ax.set_xlabel("Activity Type")
     ax.set_ylabel("Total Duration (Hours)")
