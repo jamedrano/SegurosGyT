@@ -19,8 +19,8 @@ with tab1:
     area_options = ["Todos"] + list(data["Area"].unique())
     position_options = ["Todos"] + list(data["Posicion"].unique())
 
-    selected_area = st.selectbox("Select Area", options=area_options)
-    selected_position = st.selectbox("Select Position", options=position_options)
+    selected_area = st.selectbox("Seleccione Area", options=area_options)
+    selected_position = st.selectbox("Seleccione Posición", options=position_options)
 
     # Filter data based on user selection, including "Todos" option
     if selected_area != "Todos" and selected_position != "Todos":
