@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 # Load the dataset
-file_path = '/mnt/data/consolidated_planilla.xlsx'
+file_path = 'consolidated_planilla.xlsx'
 data = pd.read_excel(file_path)
 
 # Streamlit App
