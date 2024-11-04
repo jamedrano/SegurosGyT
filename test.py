@@ -10,7 +10,7 @@ data = pd.read_excel(file_path)
 st.title("Análisis de Tiempo para el Staff del Departamento Comercial")
 
 # Create tabs for different views
-tab1, tab2 = st.tabs(["Análisis de Datos", "Datos Filtrados", "Análisis por Fecha"])
+tab1, tab2, tab3 = st.tabs(["Análisis de Datos", "Datos Filtrados", "Análisis por Fecha"])
 
 with tab1:
     st.header("Análisis de Duración de Actividades por Area, por Posición y por Tipo de Actividad")
