@@ -43,14 +43,14 @@ with tab1:
     else:
         st.write(f"Total Duration for **{selected_area}** in Position **{selected_position}**: {total_duration:.2f} hours")
 
-    # Plotting Total Duration by Date for Selected Area and Position
-    st.subheader("Total Duration by Date")
+    # Plotting Total Duration by Activity Type for Selected Area and Position
+    st.subheader("Total Duration by Activity Type")
     fig, ax = plt.subplots(figsize=(10, 6))
-    duration_by_date = filtered_data.groupby("Fecha")["Duración Calculada"].sum()
-    duration_by_date.plot(kind='bar', ax=ax)
-    ax.set_xlabel("Date")
+    duration_by_activity = filtered_data.groupby("Tipo de Actividad")["Duración Calculada"].sum()
+    duration_by_activity.plot(kind='bar', ax=ax)
+    ax.set_xlabel("Activity Type")
     ax.set_ylabel("Total Duration (Hours)")
-    title = f"Total Duration Over Time for {selected_area} - {selected_position}".replace("Todos", "All")
+    title = f"Total Duration by Activity Type for {selected_area} - {selected_position}".replace("Todos", "All")
     ax.set_title(title)
     st.pyplot(fig)
 
