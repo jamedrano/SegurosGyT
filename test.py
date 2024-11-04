@@ -15,19 +15,33 @@ tab1, tab2 = st.tabs(["Data Analysis", "Filtered Data"])
 with tab1:
     st.header("Analyze Duration by Area and Position")
 
-    # Sidebar Filters for Duration Analysis
-    area_options = data["Area"].unique()
-    position_options = data["Posicion"].unique()
+    # Add "Todos" to area and position options
+    area_options = ["Todos"] + list(data["Area"].unique())
+    position_options = ["Todos"] + list(data["Posicion"].unique())
 
     selected_area = st.selectbox("Select Area", options=area_options)
     selected_position = st.selectbox("Select Position", options=position_options)
 
-    # Filter data based on user selection
-    filtered_data = data[(data["Area"] == selected_area) & (data["Posicion"] == selected_position)]
+    # Filter data based on user selection, including "Todos" option
+    if selected_area != "Todos" and selected_position != "Todos":
+        filtered_data = data[(data["Area"] == selected_area) & (data["Posicion"] == selected_position)]
+    elif selected_area == "Todos" and selected_position != "Todos":
+        filtered_data = data[data["Posicion"] == selected_position]
+    elif selected_area != "Todos" and selected_position == "Todos":
+        filtered_data = data[data["Area"] == selected_area]
+    else:
+        filtered_data = data  # If both are "Todos", select all data
 
-    # Display total duration for selected Area and Position
+    # Display total duration for the selected filters
     total_duration = filtered_data["Duración Calculada"].sum()
-    st.write(f"Total Duration for **{selected_area}** in Position **{selected_position}**: {total_duration:.2f} hours")
+    if selected_area == "Todos" and selected_position == "Todos":
+        st.write(f"Total Duration for **All Areas and Positions**: {total_duration:.2f} hours")
+    elif selected_area == "Todos":
+        st.write(f"Total Duration for **All Areas** in Position **{selected_position}**: {total_duration:.2f} hours")
+    elif selected_position == "Todos":
+        st.write(f"Total Duration for **{selected_area}** in **All Positions**: {total_duration:.2f} hours")
+    else:
+        st.write(f"Total Duration for **{selected_area}** in Position **{selected_position}**: {total_duration:.2f} hours")
 
     # Plotting Total Duration by Date for Selected Area and Position
     st.subheader("Total Duration by Date")
@@ -36,7 +50,8 @@ with tab1:
     duration_by_date.plot(kind='bar', ax=ax)
     ax.set_xlabel("Date")
     ax.set_ylabel("Total Duration (Hours)")
-    ax.set_title(f"Total Duration Over Time for {selected_area} - {selected_position}")
+    title = f"Total Duration Over Time for {selected_area} - {selected_position}".replace("Todos", "All")
+    ax.set_title(title)
     st.pyplot(fig)
 
 with tab2:
