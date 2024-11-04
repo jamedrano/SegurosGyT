@@ -130,5 +130,5 @@ with tab4:
     fig, ax = plt.subplots(figsize=(8, 8))
     duration_by_interaction.plot(kind='pie', ax=ax, autopct='%1.1f%%', startangle=90)
     ax.set_ylabel("")  # Remove default ylabel for pie chart
-    ax.set_title(f"Duration by Client Interaction for {selected_area_interaction} - {selected_position_interaction}".replace("Todos", "All"))
+    ax.set_title(f"Duración de Interacción con Clientes para {selected_area_interaction} - {selected_position_interaction}".replace("Todos", "All"))
     st.pyplot(fig)
