@@ -10,14 +10,14 @@ data = pd.read_excel(file_path)
 st.title("Análisis de Tiempo para el Staff del Departamento Comercial")
 
 # Create tabs for different views
-tab1, tab2, tab3 = st.tabs(["Análisis de Datos", "Datos Filtrados", "Análisis por Fecha"])
+tab1, tab2, tab3, tab4 = st.tabs(["Análisis de Datos", "Datos Filtrados", "Análisis por Fecha","Análisis de Interacción con Clientes"])
 
 with tab1:
     st.header("Análisis de Duración de Actividades por Area, por Posición y por Tipo de Actividad")
 
     # Add "Todos" to area and position options
     area_options = ["Todos"] + list(data["Area"].unique())
-    position_options = ["Todos"] + list(data["Posicion"].unique())
+    position_options = ["Todos"] + list(data["Posicion"].Anunique())
 
     selected_area = st.selectbox("Select Area", options=area_options)
     selected_position = st.selectbox("Select Position", options=position_options)
@@ -104,4 +104,31 @@ with tab3:
     ax.set_ylabel("Duración Total (Horas)")
     title = f"Duración Total en el Tiempo Para {selected_area_timeseries} - {selected_position_timeseries}".replace("Todos", "All")
     ax.set_title(title)
+    st.pyplot(fig)
+
+with tab4:
+    st.header("Análisis de Interacción con Clientes")
+
+    # Dropdowns for filtering
+    selected_area_interaction = st.selectbox("Seleccione Area", options=area_options, key="area_interaction")
+    selected_position_interaction = st.selectbox("Seleccione Posición", options=position_options, key="position_interaction")
+
+    # Filter data for client interaction analysis based on dropdown selections
+    if selected_area_interaction != "Todos" and selected_position_interaction != "Todos":
+        interaction_data = data[(data["Area"] == selected_area_interaction) & (data["Posicion"] == selected_position_interaction)]
+    elif selected_area_interaction == "Todos" and selected_position_interaction != "Todos":
+        interaction_data = data[data["Posicion"] == selected_position_interaction]
+    elif selected_area_interaction != "Todos" and selected_position_interaction == "Todos":
+        interaction_data = data[data["Area"] == selected_area_interaction]
+    else:
+        interaction_data = data  # If both are "Todos", select all data
+
+    # Aggregating data by client interaction type
+    duration_by_interaction = interaction_data.groupby("¿Interacción con el cliente?")["Duración Calculada"].sum()
+
+    # Plotting a pie chart of the client interaction data
+    fig, ax = plt.subplots(figsize=(8, 8))
+    duration_by_interaction.plot(kind='pie', ax=ax, autopct='%1.1f%%', startangle=90)
+    ax.set_ylabel("")  # Remove default ylabel for pie chart
+    ax.set_title(f"Duration by Client Interaction for {selected_area_interaction} - {selected_position_interaction}".replace("Todos", "All"))
     st.pyplot(fig)
