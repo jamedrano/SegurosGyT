@@ -10,7 +10,7 @@ data = pd.read_excel(file_path)
 st.title("Análisis de Tiempo para el Staff del Departamento Comercial")
 
 # Create tabs for different views
-tab1, tab2 = st.tabs(["Análisis de Datos", "Datos Filtrados"])
+tab1, tab2 = st.tabs(["Análisis de Datos", "Datos Filtrados", "Análisis por Fecha"])
 
 with tab1:
     st.header("Análisis de Duración de Actividades por Area, por Posición y por Tipo de Actividad")
@@ -49,9 +49,9 @@ with tab1:
     duration_by_activity = filtered_data.groupby("Tipo de Actividad")["Duración Calculada"].sum()
     duration_by_activity = duration_by_activity.sort_values(ascending=False)  # Sort from largest to smallest
     duration_by_activity.plot(kind='bar', ax=ax)
-    ax.set_xlabel("Activity Type")
-    ax.set_ylabel("Total Duration (Hours)")
-    title = f"Total Duration by Activity Type for {selected_area} - {selected_position}".replace("Todos", "All")
+    ax.set_xlabel("Tipo de Actividad")
+    ax.set_ylabel("Duración Total (Horas)")
+    title = f"Duración Total por Tipo de Actividad para {selected_area} - {selected_position}".replace("Todos", "All")
     ax.set_title(title)
     st.pyplot(fig)
 
@@ -77,3 +77,31 @@ with tab2:
     st.write(f"Resumen estadístico para **{selected_area_summary}** - **{selected_position_summary}**:")
     st.write(summary_data["Duración Calculada"].describe())
 
+with tab3:
+    st.header("Análisis de Duración por Día")
+
+    # Dropdowns for filtering
+    selected_area_timeseries = st.selectbox("Seleccione Area", options=area_options, key="area_timeseries")
+    selected_position_timeseries = st.selectbox("Seleccione Posición", options=position_options, key="position_timeseries")
+
+    # Filter data for time series analysis based on dropdown selections
+    if selected_area_timeseries != "Todos" and selected_position_timeseries != "Todos":
+        timeseries_data = data[(data["Area"] == selected_area_timeseries) & (data["Posicion"] == selected_position_timeseries)]
+    elif selected_area_timeseries == "Todos" and selected_position_timeseries != "Todos":
+        timeseries_data = data[data["Posicion"] == selected_position_timeseries]
+    elif selected_area_timeseries != "Todos" and selected_position_timeseries == "Todos":
+        timeseries_data = data[data["Area"] == selected_area_timeseries]
+    else:
+        timeseries_data = data  # If both are "Todos", select all data
+
+    # Aggregating data by date for time series analysis
+    duration_by_date = timeseries_data.groupby("Fecha")["Duración Calculada"].sum()
+
+    # Plotting the time series data
+    fig, ax = plt.subplots(figsize=(10, 6))
+    duration_by_date.plot(ax=ax)
+    ax.set_xlabel("Fecha")
+    ax.set_ylabel("Duración Total (Horas)")
+    title = f"Duración Total en el Tiempo Para {selected_area_timeseries} - {selected_position_timeseries}".replace("Todos", "All")
+    ax.set_title(title)
+    st.pyplot(fig)
