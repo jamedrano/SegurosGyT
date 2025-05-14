@@ -9,3 +9,4 @@ xlsxwriter
 pygwalker
 pyxlsb
 plotly_express
+seaborn
