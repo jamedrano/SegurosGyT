@@ -52,7 +52,6 @@ def calculate_risk_score_df(df_input, grace_period_days, weights):
     creditos_unicos['risk_score'] = (weights['late_payment_ratio'] * creditos_unicos['late_payment_ratio_scaled'] + weights['payment_coverage_ratio'] * (1 - creditos_unicos['payment_coverage_ratio_scaled']) + weights['outstanding_balance_ratio'] * creditos_unicos['outstanding_balance_ratio_scaled'] + weights['collection_activity_count'] * creditos_unicos['collection_activity_count_scaled'])
     return creditos_unicos[['credito', 'risk_score']]
 
-
 # --- Utility Function for Outlier Detection (remains the same) ---
 def get_outliers_iqr(df, column_name):
     # ... (No changes here, same as previous version) ...
@@ -69,13 +68,12 @@ def cramers_v(confusion_matrix):
     n = confusion_matrix.sum().sum()
     phi2 = chi2 / n
     r, k = confusion_matrix.shape
-    if r == 1 or k == 1 or n == 0: return 0 # Handle cases where Cramer's V is undefined or 0
+    if r == 1 or k == 1 or n == 0: return 0
     phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
     rcorr = r - ((r-1)**2)/(n-1)
     kcorr = k - ((k-1)**2)/(n-1)
-    if rcorr < 1 or kcorr < 1 : return 0 # Denominator would be zero or negative
+    if rcorr < 1 or kcorr < 1 : return 0
     return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
-
 
 # --- Data Preparation for Feature Importance Tab (remains the same logic) ---
 @st.cache_data
@@ -114,7 +112,6 @@ def prepare_feature_importance_data(risk_df, listado_df, id_col_listado, target_
         else: processed_features_df[feature] = analysis_df[feature].astype(str).fillna("Unknown")
     return processed_features_df, analysis_df[target_name], features_to_analyze, original_dtypes, target_name, None
 
-
 # --- Streamlit App UI ---
 st.set_page_config(layout="wide")
 st.title("🏍️ Motorcycle Loan Risk & Data Insights App")
@@ -137,34 +134,29 @@ processed_data_info, historico_pago_cuotas_loaded, listado_creditos_loaded = "",
 numero_credito_col_name = "numeroCredito"
 
 if uploaded_file:
-    # ... (file loading logic - condensed for brevity, no changes here) ...
+    # ... (file loading logic - condensed, no changes) ...
     st.sidebar.info(f"Processing: {uploaded_file.name}")
     try:
         hpc_df = pd.read_excel(uploaded_file, sheet_name="HistoricoPagoCuotas")
-        processed_data_info += "✅ 'HistoricoPagoCuotas' loaded.\n"
-        historico_pago_cuotas_loaded = True
+        processed_data_info += "✅ 'HistoricoPagoCuotas' loaded.\n"; historico_pago_cuotas_loaded = True
         if 'categoriaProductoCrediticio' in hpc_df.columns:
             moto_df = hpc_df[hpc_df["categoriaProductoCrediticio"] == "MOTOS"].copy()
             if not moto_df.empty:
-                processed_data_info += f"Found {len(moto_df)} 'MOTOS' records.\n"
+                processed_data_info += f"Found {len(moto_df)} 'MOTOS' records.\n";
                 with st.spinner("Calculating risk scores..."): risk_scores_df = calculate_risk_score_df(moto_df, grace_period_input, user_weights)
                 if risk_scores_df is not None and not risk_scores_df.empty: processed_data_info += f"✅ Risk scores for {len(risk_scores_df)} credits.\n"
                 else: processed_data_info += "⚠️ Risk score calculation issues.\n"
-            else: processed_data_info += "⚠️ No 'MOTOS' data in 'HistoricoPagoCuotas'.\n"
+            else: processed_data_info += "⚠️ No 'MOTOS' data.\n"
         else: processed_data_info += "❌ 'categoriaProductoCrediticio' missing.\n"; historico_pago_cuotas_loaded = False
     except Exception as e: processed_data_info += f"❌ Error 'HistoricoPagoCuotas': {e}\n"; historico_pago_cuotas_loaded = False
-
     try:
         lc_df_temp = pd.read_excel(uploaded_file, sheet_name="ListadoCreditos")
-        processed_data_info += f"✅ 'ListadoCreditos' loaded ({lc_df_temp.shape[0]}r, {lc_df_temp.shape[1]}c).\n"
+        processed_data_info += f"✅ 'ListadoCreditos' loaded ({lc_df_temp.shape[0]}r, {lc_df_temp.shape[1]}c).\n"; listado_creditos_loaded = True
         if numero_credito_col_name in lc_df_temp.columns:
             lc_df_temp[numero_credito_col_name] = lc_df_temp[numero_credito_col_name].astype(str)
-            listado_creditos_df = lc_df_temp
-            listado_creditos_loaded = True
-            processed_data_info += f"'{numero_credito_col_name}' cast to string.\n"
+            listado_creditos_df = lc_df_temp; processed_data_info += f"'{numero_credito_col_name}' cast.\n"
         else:
-            processed_data_info += f"⚠️ '{numero_credito_col_name}' missing. Outlier/Feature insights affected.\n"
-            listado_creditos_df = lc_df_temp; listado_creditos_loaded = True
+            processed_data_info += f"⚠️ '{numero_credito_col_name}' missing.\n"; listado_creditos_df = lc_df_temp
     except Exception as e: processed_data_info += f"❌ Error 'ListadoCreditos': {e}\n"; listado_creditos_loaded = False
     st.sidebar.text_area("File Processing Log", processed_data_info, height=200)
 else:
@@ -224,8 +216,8 @@ with tabs[2]: # Outlier Analysis
     elif uploaded_file: st.warning("Risk scores unavailable.")
     else: st.write("Upload file for analysis.")
 
-
 with tabs[3]: # Customer Data Quality
+    # ... (No changes here, same as previous version - default DQA col already updated) ...
     st.header(tab_titles[3] + " ('ListadoCreditos')")
     if not uploaded_file: st.write("Upload file for DQA.")
     elif not listado_creditos_loaded or listado_creditos_df is None: st.error("'ListadoCreditos' not loaded. Check log.")
@@ -239,22 +231,14 @@ with tabs[3]: # Customer Data Quality
         else: st.success("No missing values! 🎉")
         st.subheader("3. Duplicates"); st.write(f"Full Duplicates: {df_dqa.duplicated().sum()}")
         if numero_credito_col_name in df_dqa.columns: st.write(f"'{numero_credito_col_name}' Duplicates: {df_dqa.duplicated(subset=[numero_credito_col_name]).sum()}")
-        
         st.subheader("4. Column Analysis")
-        # --- MODIFICATION: Default to only one feature for DQA detailed analysis ---
         default_dqa_col = [df_dqa.columns[0]] if len(df_dqa.columns) > 0 else []
-        cols_detail = st.multiselect(
-            "Select columns for detail:",
-            options=df_dqa.columns.tolist(),
-            default=default_dqa_col
-        )
-        # --- END MODIFICATION ---
+        cols_detail = st.multiselect("Select columns for detail:", options=df_dqa.columns.tolist(), default=default_dqa_col)
         for col in cols_detail:
             with st.expander(f"'{col}' (Type: {df_dqa[col].dtype})"):
                 st.write(f"Unique: {df_dqa[col].nunique()}, Missing: {df_dqa[col].isnull().sum()} ({df_dqa[col].isnull().sum()/len(df_dqa)*100:.2f}%)")
                 if pd.api.types.is_numeric_dtype(df_dqa[col]): st.dataframe(df_dqa[col].describe().to_frame().T)
                 elif pd.api.types.is_object_dtype(df_dqa[col]): st.dataframe(df_dqa[col].value_counts().nlargest(10).reset_index())
-
 
 with tabs[4]: # Pre-Loan Feature Insights
     st.header(tab_titles[4])
@@ -275,14 +259,11 @@ with tabs[4]: # Pre-Loan Feature Insights
         if not available_features:
              st.error("No features available from 'ListadoCreditos' for analysis (excluding ID column).")
         else:
-            # --- MODIFICATION: Default to only one feature for Feature Insights ---
             default_fi_col = [available_features[0]] if len(available_features) > 0 else []
             selected_cols_fi = st.multiselect(
                 "Select customer profile features from 'ListadoCreditos' to analyze:",
-                options=available_features,
-                default=default_fi_col
+                options=available_features, default=default_fi_col
             )
-            # --- END MODIFICATION ---
 
             if st.button("🚀 Analyze Feature Importance"):
                 if not selected_cols_fi:
@@ -304,38 +285,72 @@ with tabs[4]: # Pre-Loan Feature Insights
                         elif features_for_analysis_df is None or target_series is None: st.error("Failed to prepare data. Check logs.")
                         else:
                             st.success(f"Data prepared. Analyzing {len(actual_features_analyzed)} features against '{final_target_name}'.")
-                            # Correlation Analysis
+                            
+                            # --- A. Correlation Analysis (Numeric vs. Continuous Target) ---
                             if "Raw" in chosen_target_type:
-                                st.markdown("---"); st.subheader("A. Correlation with Raw Risk Score")
-                                numeric_features_fi = [f for f in actual_features_analyzed if pd.api.types.is_numeric_dtype(original_feature_dtypes.get(f))]
-                                if numeric_features_fi:
-                                    correlations = {feat: features_for_analysis_df[feat].corr(target_series, method='pearson') if pd.api.types.is_numeric_dtype(target_series) else np.nan for feat in numeric_features_fi}
-                                    corr_df = pd.DataFrame.from_dict(correlations, orient='index', columns=['Pearson Correlation']).abs().sort_values(by='Pearson Correlation', ascending=False)
-                                    corr_df['Pearson Correlation'] = [correlations[idx] for idx in corr_df.index]
-                                    st.dataframe(corr_df.style.format("{:.3f}"))
-                                    top_n_corr = st.slider("Scatter plots for top N correlated:", 0, min(5, len(corr_df)), 0, key="corr_scatter_slider") # Default 0
-                                    for i, feat_name in enumerate(corr_df.index[:top_n_corr]):
-                                        fig_corr, ax_corr = plt.subplots(); sns.regplot(x=features_for_analysis_df[feat_name], y=target_series, ax=ax_corr, scatter_kws={'alpha':0.5}); ax_corr.set_title(f"{feat_name} vs. Risk Score"); st.pyplot(fig_corr); plt.close(fig_corr)
-                                else: st.info("No numeric features for correlation.")
-                            # Group-wise Comparison
+                                st.markdown("---")
+                                st.subheader("A. Correlation with Raw Risk Score")
+                                # Identify numeric features that were ALSO selected by the user for this run
+                                numeric_features_to_correlate = [
+                                    f for f in actual_features_analyzed 
+                                    if pd.api.types.is_numeric_dtype(original_feature_dtypes.get(f)) and f in selected_cols_fi
+                                ]
+                                if numeric_features_to_correlate:
+                                    correlations = {}
+                                    for feat in numeric_features_to_correlate:
+                                        if pd.api.types.is_numeric_dtype(target_series): # Ensure target is numeric for correlation
+                                            correlations[feat] = features_for_analysis_df[feat].corr(target_series, method='pearson')
+                                        else:
+                                            correlations[feat] = np.nan 
+
+                                    corr_df = pd.DataFrame.from_dict(correlations, orient='index', columns=['Pearson Correlation'])
+                                    corr_df = corr_df.dropna() # Remove any NaNs (e.g. if target wasn't numeric)
+                                    
+                                    if not corr_df.empty:
+                                        corr_df_display = corr_df.copy()
+                                        corr_df_display['Abs Correlation'] = corr_df_display['Pearson Correlation'].abs()
+                                        corr_df_display = corr_df_display.sort_values(by='Abs Correlation', ascending=False)
+                                        
+                                        st.write("Correlation Table (Sorted by Absolute Value):")
+                                        st.dataframe(corr_df_display[['Pearson Correlation']].style.format("{:.3f}"))
+                                        
+                                        st.subheader("Scatter Plots for Selected Numeric Features")
+                                        # Iterate through the features present in corr_df_display (which are selected and had valid correlations)
+                                        for feat_name in corr_df_display.index: 
+                                            if feat_name in features_for_analysis_df.columns and pd.api.types.is_numeric_dtype(target_series):
+                                                fig_corr, ax_corr = plt.subplots()
+                                                sns.regplot(x=features_for_analysis_df[feat_name], y=target_series, ax=ax_corr, scatter_kws={'alpha':0.5}, line_kws={'color':'red'})
+                                                ax_corr.set_title(f"Scatter Plot: {feat_name} vs. Risk Score")
+                                                ax_corr.set_xlabel(feat_name)
+                                                ax_corr.set_ylabel(final_target_name) 
+                                                st.pyplot(fig_corr)
+                                                plt.close(fig_corr)
+                                    else:
+                                        st.info("No valid correlations calculated for the selected numeric features.")
+                                else:
+                                    st.info("No numeric features were selected by you for correlation analysis.")
+                            
+                            # --- B. Group-wise Comparison (Categorical vs. Target) ---
                             st.markdown("---"); st.subheader("B. Group-wise Comparisons")
-                            categorical_features_fi = [f for f in actual_features_analyzed if not pd.api.types.is_numeric_dtype(original_feature_dtypes.get(f)) or features_for_analysis_df[f].nunique() < 20]
-                            if categorical_features_fi:
+                            # Consider features as categorical if they are not numeric OR have few unique values AND were selected
+                            categorical_features_to_group = [
+                                f for f in actual_features_analyzed 
+                                if (not pd.api.types.is_numeric_dtype(original_feature_dtypes.get(f)) or features_for_analysis_df[f].nunique() < 20) 
+                                and f in selected_cols_fi
+                            ]
+                            if categorical_features_to_group:
                                 results_groupwise = []
-                                for feat in categorical_features_fi:
+                                for feat in categorical_features_to_group:
                                     if features_for_analysis_df[feat].nunique() < 2 or features_for_analysis_df[feat].nunique() > 50 : continue
+                                    
                                     plot_target_groupwise = pd.to_numeric(target_series, errors='coerce') if "Raw" in chosen_target_type else target_series
-                                    
-                                    # Attempt to order categories for boxplot
                                     try:
-                                        if "Raw" in chosen_target_type and pd.api.types.is_numeric_dtype(plot_target_groupwise):
-                                            order = features_for_analysis_df.groupby(feat)[final_target_name].median().sort_values().index.astype(str)
-                                        else: # Binned target or non-numeric feature
-                                            order = sorted(features_for_analysis_df[feat].dropna().unique().astype(str))
-                                    except Exception: # Fallback if ordering fails
-                                        order = sorted(features_for_analysis_df[feat].dropna().unique().astype(str))
+                                        order = (features_for_analysis_df.groupby(feat)[final_target_name].median().sort_values().index.astype(str)
+                                                 if "Raw" in chosen_target_type and pd.api.types.is_numeric_dtype(plot_target_groupwise) and features_for_analysis_df[feat].nunique() > 1
+                                                 else sorted(features_for_analysis_df[feat].dropna().unique().astype(str)))
+                                    except Exception: order = sorted(features_for_analysis_df[feat].dropna().unique().astype(str))
                                     
-                                    if len(order) > 0: # Proceed only if there are categories to plot
+                                    if len(order) > 0 and not plot_target_groupwise.isnull().all():
                                         fig_box_fi, ax_box_fi = plt.subplots(); 
                                         sns.boxplot(x=features_for_analysis_df[feat].astype(str), y=plot_target_groupwise, ax=ax_box_fi, order=order)
                                         ax_box_fi.set_title(f"Risk Score by {feat}"); ax_box_fi.tick_params(axis='x', rotation=45); plt.tight_layout(); st.pyplot(fig_box_fi); plt.close(fig_box_fi)
@@ -344,30 +359,39 @@ with tabs[4]: # Pre-Loan Feature Insights
                                         ct = pd.crosstab(features_for_analysis_df[feat], target_series)
                                         if ct.size > 0 and 0 not in ct.shape and ct.sum().sum() > 0:
                                             try: chi2, p, _, _ = chi2_contingency(ct); cv = cramers_v(ct.values); results_groupwise.append({'Feature': feat, 'Test': 'Chi2', 'Stat': chi2, 'p': p, "CramerV": cv})
-                                            except: pass # Ignore errors in chi2
-                                    else:
+                                            except ValueError: pass 
+                                    else: # ANOVA
                                         groups = [target_series[features_for_analysis_df[feat] == cat] for cat in features_for_analysis_df[feat].unique() if target_series[features_for_analysis_df[feat] == cat].shape[0] > 1]
                                         if len(groups) > 1:
                                             try: f_stat, p_anova = f_oneway(*groups); results_groupwise.append({'Feature': feat, 'Test': 'ANOVA', 'Stat': f_stat, 'p': p_anova, "CramerV": np.nan})
-                                            except: pass # Ignore errors in ANOVA
+                                            except ValueError: pass 
                                 if results_groupwise: st.dataframe(pd.DataFrame(results_groupwise).style.format({'Stat': "{:.3f}", 'p': "{:.3g}", "CramerV": "{:.3f}"}))
-                                else: st.info("No suitable categories for group tests.")
-                            else: st.info("No categorical features for group comparison.")
-                            # Mutual Information
+                                else: st.info("No suitable categories for group tests among selected features.")
+                            else: st.info("No categorical features were selected by you for group comparison.")
+                            
+                            # --- C. Mutual Information ---
                             st.markdown("---"); st.subheader("C. Mutual Information")
-                            mi_features_df = pd.DataFrame(index=features_for_analysis_df.index); label_encoders = {}
-                            for feat in actual_features_analyzed:
-                                if not pd.api.types.is_numeric_dtype(original_feature_dtypes.get(feat)):
-                                    le = LabelEncoder(); mi_features_df[feat] = le.fit_transform(features_for_analysis_df[feat].astype(str)); label_encoders[feat] = le
-                                else: mi_features_df[feat] = features_for_analysis_df[feat].fillna(features_for_analysis_df[feat].median())
-                            if not mi_features_df.empty:
-                                mi_target = target_series.astype(int) if "Binned" in chosen_target_type else pd.to_numeric(target_series, errors='coerce').fillna(target_series.median())
-                                mi_func = mutual_info_classif if "Binned" in chosen_target_type else mutual_info_regression
-                                mi_scores = mi_func(mi_features_df, mi_target, discrete_features='auto', random_state=42)
-                                mi_df = pd.DataFrame({'Feature': actual_features_analyzed, 'MI': mi_scores}).sort_values(by='MI', ascending=False)
-                                st.dataframe(mi_df.style.format({'MI': "{:.4f}"}))
-                                fig_mi, ax_mi = plt.subplots(figsize=(10, max(5, len(mi_df)*0.3))); sns.barplot(x='MI',y='Feature',data=mi_df,ax=ax_mi); ax_mi.set_title("Mutual Information"); plt.tight_layout(); st.pyplot(fig_mi); plt.close(fig_mi)
-                            else: st.info("No features for MI.")
+                            # Use only features selected by the user for this run
+                            mi_features_to_analyze = [f for f in actual_features_analyzed if f in selected_cols_fi]
+                            if mi_features_to_analyze:
+                                mi_features_df = pd.DataFrame(index=features_for_analysis_df.index); label_encoders = {}
+                                for feat in mi_features_to_analyze: # Iterate over selected features for MI
+                                    if not pd.api.types.is_numeric_dtype(original_feature_dtypes.get(feat)):
+                                        le = LabelEncoder(); mi_features_df[feat] = le.fit_transform(features_for_analysis_df[feat].astype(str)); label_encoders[feat] = le
+                                    else: mi_features_df[feat] = features_for_analysis_df[feat].fillna(features_for_analysis_df[feat].median())
+                                
+                                if not mi_features_df.empty:
+                                    mi_target = target_series.astype(int) if "Binned" in chosen_target_type else pd.to_numeric(target_series, errors='coerce').fillna(target_series.median())
+                                    mi_func = mutual_info_classif if "Binned" in chosen_target_type else mutual_info_regression
+                                    # Ensure mi_features_df columns align with mi_features_to_analyze for MI score assignment
+                                    mi_scores = mi_func(mi_features_df[mi_features_to_analyze], mi_target, discrete_features='auto', random_state=42)
+                                    mi_df = pd.DataFrame({'Feature': mi_features_to_analyze, 'MI': mi_scores}).sort_values(by='MI', ascending=False)
+                                    
+                                    st.dataframe(mi_df.style.format({'MI': "{:.4f}"}))
+                                    if not mi_df.empty:
+                                        fig_mi, ax_mi = plt.subplots(figsize=(10, max(5, len(mi_df)*0.3))); sns.barplot(x='MI',y='Feature',data=mi_df,ax=ax_mi); ax_mi.set_title("Mutual Information"); plt.tight_layout(); st.pyplot(fig_mi); plt.close(fig_mi)
+                                else: st.info("No features processed for MI from your selection.")
+                            else: st.info("No features were selected by you for Mutual Information analysis.")
 # --- Footer ---
 st.markdown("---")
-st.markdown("App developed by your Expert Data Scientist Antonio Medrano, CepSA.")
+st.markdown("App developed by your Expert Data Scientist, Antonio Medrano, CepSA.")
