@@ -13,7 +13,8 @@ def calculate_risk_score_df(df_input, grace_period_days, weights):
     if df_input.empty: return None
     df = df_input.copy()
     
-    payment_component_cols = ['capitalCuota', 'interesCuota', 'recargoInteresCuota']
+    # CORRECTED column name here
+    payment_component_cols = ['capitalCuota', 'interesesCuota', 'recargoInteresCuota'] 
     required_base_cols = ['fechaDesembolso', 'fechaEsperadaPago', 'fechaPagoRecibido', 'fechaRegistro', 
                           'fechaTRansaccion', 'credito', 'reglaCobranza', 
                           'cuotaEsperada', 'saldoCapitalActual', 'totalDesembolso', 
@@ -40,12 +41,14 @@ def calculate_risk_score_df(df_input, grace_period_days, weights):
     total_payments_due_count = df.groupby('credito')['fechaEsperadaPago'].count()
     late_payment_ratio = (late_payment_counts / total_payments_due_count.replace(0, np.nan)).fillna(0)
     
-    for col in payment_component_cols:
+    for col in payment_component_cols: 
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-    df['montoPagoRealizado'] = df['capitalCuota'] + df['interesCuota'] + df['recargoInteresCuota']
+        
+    df['montoPagoRealizado'] = df['capitalCuota'] + df['interesesCuota'] + df['recargoInteresCuota'] 
+    
     total_payment_made_monetary = df.groupby('credito')['montoPagoRealizado'].sum()
     
-    df['cuotaEsperada'] = pd.to_numeric(df['cuotaEsperada'], errors='coerce').fillna(0) # Ensure numeric & handle NaNs before sum
+    df['cuotaEsperada'] = pd.to_numeric(df['cuotaEsperada'], errors='coerce').fillna(0) 
     total_payment_expected_monetary = df.groupby('credito')['cuotaEsperada'].sum()
     
     payment_coverage_ratio = (total_payment_made_monetary / total_payment_expected_monetary.replace(0, np.nan))
@@ -404,11 +407,10 @@ with tabs[5]: # Segment Performance Analyzer
                             segment_summary_list.append({'Metric': comp_name, 'Segment Average': avg_components_segment.get(comp_name, np.nan)})
                         segment_summary_df = pd.DataFrame(segment_summary_list)
 
-                        def format_value_segment_tab(val, metric_name): # Renamed function for clarity
+                        def format_value_segment_tab(val, metric_name):
                             if pd.isna(val): return "N/A"
                             if metric_name == 'Risk Score': return f"{val:.4f}"
-                            # For component ratios, display as decimal, not percentage
-                            if 'ratio' in metric_name : return f"{val:.4f}" 
+                            if 'ratio' in metric_name : return f"{val:.4f}" # Display ratios as decimals
                             if 'count' in metric_name : return f"{val:.2f}"
                             return f"{val:.4f}" 
 
