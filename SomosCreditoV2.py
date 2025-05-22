@@ -11,160 +11,108 @@ from scipy.stats import chi2_contingency, f_oneway
 # --- Core Risk Score Calculation Logic ---
 # MODIFIED to return raw components as well
 def calculate_risk_score_df(df_input, grace_period_days, weights):
+    # ... (No changes here, same as previous version) ...
     if df_input.empty: return None
     df = df_input.copy()
     required_cols = ['fechaDesembolso', 'fechaEsperadaPago', 'fechaPagoRecibido', 'fechaRegistro', 'fechaTRansaccion', 'credito', 'reglaCobranza', 'cuotaCubierta', 'cuotaEsperada', 'saldoCapitalActual', 'totalDesembolso', 'cobranzaTrans', 'categoriaProductoCrediticio']
     missing_cols = [col for col in required_cols if col not in df.columns];
     if missing_cols: st.error(f"Sheet 'HistoricoPagoCuotas' missing columns for risk scoring: {', '.join(missing_cols)}"); return None
-    
     date_cols = ['fechaDesembolso', 'fechaEsperadaPago', 'fechaPagoRecibido', 'fechaRegistro', 'fechaTRansaccion']
     for col in date_cols:
         if col in df.columns: df[col] = pd.to_datetime(df[col], errors='coerce')
-    
     df['credito'] = df['credito'].astype(str)
     grace_period = pd.Timedelta(days=grace_period_days)
-    
     mask_valid_dates_late_payment = df['fechaPagoRecibido'].notna() & df['fechaEsperadaPago'].notna()
     df['late_payment'] = 0
     df.loc[mask_valid_dates_late_payment, 'late_payment'] = (df.loc[mask_valid_dates_late_payment, 'fechaPagoRecibido'] > (df.loc[mask_valid_dates_late_payment, 'fechaEsperadaPago'] + grace_period)).astype(int)
-    
     late_payment_counts = df.groupby('credito')['late_payment'].sum()
     total_payments = df.groupby('credito')['fechaEsperadaPago'].count()
     late_payment_ratio = (late_payment_counts / total_payments.replace(0, np.nan)).fillna(0)
-    
-    df['cuotaCubierta'] = pd.to_numeric(df['cuotaCubierta'], errors='coerce').fillna(0) # Ensure numeric
-    df['cuotaEsperada'] = pd.to_numeric(df['cuotaEsperada'], errors='coerce') # Ensure numeric
+    df['cuotaCubierta'] = pd.to_numeric(df['cuotaCubierta'], errors='coerce').fillna(0) 
+    df['cuotaEsperada'] = pd.to_numeric(df['cuotaEsperada'], errors='coerce') 
     total_payment_made = df.groupby('credito')['cuotaCubierta'].sum()
     total_payment_expected = df.groupby('credito')['cuotaEsperada'].sum()
-    payment_coverage_ratio = (total_payment_made / total_payment_expected.replace(0, np.nan))
-    payment_coverage_ratio = payment_coverage_ratio.fillna(1).replace([np.inf, -np.inf], 1) # Default to 1 if expected is 0 or NaN
-
+    payment_coverage_ratio = (total_payment_made / total_payment_expected.replace(0, np.nan)).fillna(1).replace([np.inf, -np.inf], 1)
     df['saldoCapitalActual'] = pd.to_numeric(df['saldoCapitalActual'], errors='coerce')
     df['totalDesembolso'] = pd.to_numeric(df['totalDesembolso'], errors='coerce')
     last_saldo = df.groupby('credito')['saldoCapitalActual'].last()
     first_desembolso = df.groupby('credito')['totalDesembolso'].first()
     outstanding_balance_ratio = (last_saldo / first_desembolso.replace(0, np.nan)).fillna(0)
-    
     df['cobranzaTrans'] = pd.to_numeric(df['cobranzaTrans'], errors='coerce').fillna(0)
     df['collection_activity'] = (df['cobranzaTrans'] > 0).astype(int)
     collection_activity_count = df.groupby('credito')['collection_activity'].sum()
-    
-    # DataFrame with unique credits and raw components
     creditos_unicos = pd.DataFrame(df['credito'].unique(), columns=['credito'])
     creditos_unicos = creditos_unicos.merge(late_payment_ratio.to_frame(name='late_payment_ratio'), left_on='credito', right_index=True, how='left').fillna({'late_payment_ratio': 0})
     creditos_unicos = creditos_unicos.merge(payment_coverage_ratio.to_frame(name='payment_coverage_ratio'), left_on='credito', right_index=True, how='left').fillna({'payment_coverage_ratio': 1})
     creditos_unicos = creditos_unicos.merge(outstanding_balance_ratio.to_frame(name='outstanding_balance_ratio'), left_on='credito', right_index=True, how='left').fillna({'outstanding_balance_ratio': 0})
     creditos_unicos = creditos_unicos.merge(collection_activity_count.to_frame(name='collection_activity_count'), left_on='credito', right_index=True, how='left').fillna({'collection_activity_count': 0})
-
-    # Store raw components before scaling
     df_for_return = creditos_unicos.copy()
-
-    # Scaling
     component_cols_to_scale = ['late_payment_ratio', 'payment_coverage_ratio', 'outstanding_balance_ratio', 'collection_activity_count']
     for col_name in component_cols_to_scale:
         min_val, max_val = creditos_unicos[col_name].min(), creditos_unicos[col_name].max()
         scaled_col_name = f'{col_name}_scaled'
-        if max_val == min_val: # Avoid division by zero if all values are the same
-            # If min=max=0, scaled is 0. If min=max!=0, scaled is 0.5 (or 0, depending on logic)
-            # For ratios, if min=max, it often implies a constant state, 0 might be appropriate.
-            # For payment_coverage_ratio where higher is better, if all are 1 (fully covered), 1-scaled would be 0.
-            # Let's stick to 0 for simplicity, meaning no variability from this feature in this case.
-            df_for_return[scaled_col_name] = 0.0
-        else:
-            df_for_return[scaled_col_name] = (creditos_unicos[col_name] - min_val) / (max_val - min_val)
-        df_for_return[scaled_col_name] = df_for_return[scaled_col_name].fillna(0) # Handle NaNs from scaling (e.g. if original col was all NaN)
-
-    # Calculate final risk score
-    df_for_return['risk_score'] = (
-        weights['late_payment_ratio'] * df_for_return['late_payment_ratio_scaled'] +
-        weights['payment_coverage_ratio'] * (1 - df_for_return['payment_coverage_ratio_scaled']) + # Invert coverage
-        weights['outstanding_balance_ratio'] * df_for_return['outstanding_balance_ratio_scaled'] +
-        weights['collection_activity_count'] * df_for_return['collection_activity_count_scaled']
-    )
-    
-    # Select columns to return: ID, final score, and raw components
+        if max_val == min_val: df_for_return[scaled_col_name] = 0.0
+        else: df_for_return[scaled_col_name] = (creditos_unicos[col_name] - min_val) / (max_val - min_val)
+        df_for_return[scaled_col_name] = df_for_return[scaled_col_name].fillna(0)
+    df_for_return['risk_score'] = (weights['late_payment_ratio'] * df_for_return['late_payment_ratio_scaled'] + weights['payment_coverage_ratio'] * (1 - df_for_return['payment_coverage_ratio_scaled']) + weights['outstanding_balance_ratio'] * df_for_return['outstanding_balance_ratio_scaled'] + weights['collection_activity_count'] * df_for_return['collection_activity_count_scaled'])
     cols_to_return = ['credito', 'risk_score', 'late_payment_ratio', 'payment_coverage_ratio', 'outstanding_balance_ratio', 'collection_activity_count']
     return df_for_return[cols_to_return]
 
-
-# --- Utility Function for Outlier Detection (remains the same) ---
+# --- Utility Function for Outlier Detection ---
 def get_outliers_iqr(df, column_name):
-    # ... (No changes here, same as previous version) ...
     if df is None or df.empty or column_name not in df.columns or df[column_name].isnull().all(): return pd.DataFrame(), pd.DataFrame(), np.nan, np.nan
     Q1, Q3 = df[column_name].quantile(0.25), df[column_name].quantile(0.75); IQR = Q3 - Q1
     if IQR == 0: lower_bound, upper_bound = Q1, Q3
     else: lower_bound, upper_bound = Q1 - 1.5 * IQR, Q3 + 1.5 * IQR
     return df[df[column_name] < lower_bound], df[df[column_name] > upper_bound], lower_bound, upper_bound
 
-# --- Helper function for Cramer's V (remains the same) ---
+# --- Helper function for Cramer's V ---
 def cramers_v(confusion_matrix):
-    # ... (No changes here, same as previous version) ...
     chi2 = chi2_contingency(confusion_matrix)[0]
     n = confusion_matrix.sum().sum()
     phi2 = chi2 / n; r, k = confusion_matrix.shape
     if r == 1 or k == 1 or n == 0: return 0
     phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1)); rcorr = r - ((r-1)**2)/(n-1); kcorr = k - ((k-1)**2)/(n-1)
-    if rcorr < 1 or kcorr < 1 : return 0
+    if rcorr < 1 or kcorr < 1 : return 0 # Avoid division by zero or sqrt of negative
     return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
 
-# --- Data Preparation for Feature Importance Tab (remains the same logic) ---
+
+# --- Data Preparation for Feature Importance Tab ---
 @st.cache_data
 def prepare_feature_importance_data(risk_df_with_components, listado_df, id_col_listado, target_col_risk, selected_features_listado, bin_target, num_bins=3):
-    # Note: risk_df_with_components now expected to have risk_score
-    if risk_df_with_components is None or risk_df_with_components.empty or listado_df is None or listado_df.empty:
-        return None, "Risk scores or customer data not available."
+    if risk_df_with_components is None or risk_df_with_components.empty or listado_df is None or listado_df.empty: return None, "Risk scores or customer data not available."
     if id_col_listado not in listado_df.columns: return None, f"ID col '{id_col_listado}' not in customer data."
     if target_col_risk not in risk_df_with_components.columns: return None, f"Target '{target_col_risk}' not in risk scores."
-    
     listado_df_copy = listado_df.copy(); risk_df_copy = risk_df_with_components.copy()
     listado_df_copy[id_col_listado] = listado_df_copy[id_col_listado].astype(str)
-    risk_df_copy['credito'] = risk_df_copy['credito'].astype(str) # 'credito' is the ID in risk_df_copy
-    
+    risk_df_copy['credito'] = risk_df_copy['credito'].astype(str)
     merged_df = pd.merge(listado_df_copy, risk_df_copy, left_on=id_col_listado, right_on='credito', how='inner')
     if merged_df.empty: return None, "No matching records found after merging."
-    
     features_to_analyze = [f for f in selected_features_listado if f in merged_df.columns and f not in [target_col_risk, id_col_listado, 'credito'] + risk_score_component_names]
     if not features_to_analyze: return None, "No valid features selected/found for analysis."
-    
-    analysis_df = merged_df[features_to_analyze + [target_col_risk]].copy() # Only need target_col_risk for y
-    target_name_for_y = target_col_risk # This is the column to use as 'y'
-    
+    analysis_df = merged_df[features_to_analyze + [target_col_risk]].copy()
+    target_name_for_y = target_col_risk
     if bin_target:
         if analysis_df[target_col_risk].nunique() <= 1: return None, f"Target '{target_col_risk}' has <=1 unique value, cannot bin."
         try:
             discretizer = KBinsDiscretizer(n_bins=num_bins, encode='ordinal', strategy='quantile', subsample=None)
-            # We need to apply binning on the original target_col_risk from analysis_df for the y_series
             binned_target_values = discretizer.fit_transform(analysis_df[[target_col_risk]])
-            # Create the y-series for return
             y_series = pd.Series(binned_target_values.ravel().astype(int).astype(str), index=analysis_df.index, name=target_col_risk + '_binned')
             target_name_for_y = target_col_risk + '_binned'
         except ValueError as e: return None, f"Error binning target '{target_col_risk}': {e}."
-    else:
-        y_series = analysis_df[target_col_risk] # Use raw target as y
-
-    # Prepare X (features_for_analysis_df)
-    x_features_df = pd.DataFrame(index=analysis_df.index)
-    original_dtypes = {}
+    else: y_series = analysis_df[target_col_risk]
+    x_features_df = pd.DataFrame(index=analysis_df.index); original_dtypes = {}
     for feature in features_to_analyze:
-        original_dtypes[feature] = analysis_df[feature].dtype # Store original dtype from analysis_df (before it might be altered)
-        if pd.api.types.is_numeric_dtype(analysis_df[feature]):
-            x_features_df[feature] = analysis_df[feature].fillna(analysis_df[feature].median())
-        elif pd.api.types.is_object_dtype(analysis_df[feature]) or pd.api.types.is_categorical_dtype(analysis_df[feature]):
-            x_features_df[feature] = analysis_df[feature].fillna(analysis_df[feature].mode().iloc[0] if not analysis_df[feature].mode().empty else "Unknown")
-        else: 
-            x_features_df[feature] = analysis_df[feature].astype(str).fillna("Unknown")
-            
+        original_dtypes[feature] = analysis_df[feature].dtype
+        if pd.api.types.is_numeric_dtype(analysis_df[feature]): x_features_df[feature] = analysis_df[feature].fillna(analysis_df[feature].median())
+        elif pd.api.types.is_object_dtype(analysis_df[feature]) or pd.api.types.is_categorical_dtype(analysis_df[feature]): x_features_df[feature] = analysis_df[feature].fillna(analysis_df[feature].mode().iloc[0] if not analysis_df[feature].mode().empty else "Unknown")
+        else: x_features_df[feature] = analysis_df[feature].astype(str).fillna("Unknown")
     return x_features_df, y_series, features_to_analyze, original_dtypes, target_name_for_y, None
-
 
 # --- Streamlit App UI ---
 st.set_page_config(layout="wide")
 st.title("🏍️ Motorcycle Loan Risk & Data Insights App")
-
-# Global names for risk score components
 risk_score_component_names = ['late_payment_ratio', 'payment_coverage_ratio', 'outstanding_balance_ratio', 'collection_activity_count']
-
-# --- Sidebar (Inputs) ---
 st.sidebar.header("⚙️ Configuration")
 uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"])
 default_grace_period = 5
@@ -175,9 +123,6 @@ w_payment_coverage = st.sidebar.slider("Payment Coverage Ratio Weight", 0.0, 1.0
 w_outstanding_balance = st.sidebar.slider("Outstanding Balance Ratio Weight", 0.0, 1.0, 0.20, 0.01)
 w_collection_activity = st.sidebar.slider("Collection Activity Count Weight", 0.0, 1.0, 0.00, 0.01)
 user_weights = {'late_payment_ratio': w_late_payment, 'payment_coverage_ratio': w_payment_coverage, 'outstanding_balance_ratio': w_outstanding_balance, 'collection_activity_count': w_collection_activity}
-
-# --- Data Loading and Initial Processing ---
-# risk_scores_df will now contain raw components as well
 risk_scores_df, listado_creditos_df = None, None
 processed_data_info, historico_pago_cuotas_loaded, listado_creditos_loaded = "", False, False
 numero_credito_col_name = "numeroCredito"
@@ -191,10 +136,8 @@ if uploaded_file:
             moto_df = hpc_df[hpc_df["categoriaProductoCrediticio"] == "MOTOS"].copy()
             if not moto_df.empty:
                 processed_data_info += f"Found {len(moto_df)} 'MOTOS' records.\n";
-                with st.spinner("Calculating risk scores & components..."): # Spinner text updated
-                    risk_scores_df = calculate_risk_score_df(moto_df, grace_period_input, user_weights)
-                if risk_scores_df is not None and not risk_scores_df.empty: 
-                    processed_data_info += f"✅ Risk scores & components for {len(risk_scores_df)} credits.\n"
+                with st.spinner("Calculating risk scores & components..."): risk_scores_df = calculate_risk_score_df(moto_df, grace_period_input, user_weights)
+                if risk_scores_df is not None and not risk_scores_df.empty: processed_data_info += f"✅ Risk scores & components for {len(risk_scores_df)} credits.\n"
                 else: processed_data_info += "⚠️ Risk score calculation issues.\n"
             else: processed_data_info += "⚠️ No 'MOTOS' data.\n"
         else: processed_data_info += "❌ 'categoriaProductoCrediticio' missing.\n"; historico_pago_cuotas_loaded = False
@@ -205,14 +148,11 @@ if uploaded_file:
         if numero_credito_col_name in lc_df_temp.columns:
             lc_df_temp[numero_credito_col_name] = lc_df_temp[numero_credito_col_name].astype(str)
             listado_creditos_df = lc_df_temp; processed_data_info += f"'{numero_credito_col_name}' cast.\n"
-        else:
-            processed_data_info += f"⚠️ '{numero_credito_col_name}' missing.\n"; listado_creditos_df = lc_df_temp
+        else: processed_data_info += f"⚠️ '{numero_credito_col_name}' missing.\n"; listado_creditos_df = lc_df_temp
     except Exception as e: processed_data_info += f"❌ Error 'ListadoCreditos': {e}\n"; listado_creditos_loaded = False
     st.sidebar.text_area("File Processing Log", processed_data_info, height=200)
-else:
-    st.info("☝️ Upload an Excel file to begin.")
+else: st.info("☝️ Upload an Excel file to begin.")
 
-# --- Tabs ---
 tab_titles = ["📊 Risk Scores", "📈 Risk EDA", "🕵️ Outlier Analysis", "📋 Customer Data Quality", "🔍 Pre-Loan Feature Insights", " сегмент Segment Performance"]
 tabs = st.tabs(tab_titles)
 
@@ -220,16 +160,8 @@ with tabs[0]: # Risk Scores
     st.header(tab_titles[0])
     if risk_scores_df is not None and not risk_scores_df.empty:
         st.subheader("Calculated Risk Scores & Components (per Credit)")
-        # Display only key columns initially, or allow user to select
         display_cols_scores = ['credito', 'risk_score'] + risk_score_component_names
-        st.dataframe(risk_scores_df[display_cols_scores].style.format({
-            "risk_score": "{:.4f}",
-            "late_payment_ratio": "{:.2%}",
-            "payment_coverage_ratio": "{:.2%}",
-            "outstanding_balance_ratio": "{:.2%}",
-            "collection_activity_count": "{:.0f}"
-        }), height=500, use_container_width=True)
-        
+        st.dataframe(risk_scores_df[display_cols_scores].style.format({"risk_score": "{:.4f}", "late_payment_ratio": "{:.2%}", "payment_coverage_ratio": "{:.2%}", "outstanding_balance_ratio": "{:.2%}", "collection_activity_count": "{:.0f}"}), height=500, use_container_width=True)
         output = io.BytesIO(); risk_scores_df.to_excel(pd.ExcelWriter(output, engine='xlsxwriter'), index=False, sheet_name='RiskScoresAndComponents'); excel_data = output.getvalue()
         st.download_button(label="📥 Download Scores & Components", data=excel_data, file_name=f"risk_scores_components_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.ms-excel")
     elif uploaded_file and historico_pago_cuotas_loaded: st.warning("Risk scores not calculated. Check log.")
@@ -264,10 +196,9 @@ with tabs[2]: # Outlier Analysis
             if not high_o.empty or not low_o.empty:
                 output_o = io.BytesIO()
                 with pd.ExcelWriter(output_o, engine='xlsxwriter') as writer:
-                    # Ensure 'risk_score' and other components are included if needed
                     if not high_o.empty:
                         high_o_details = listado_creditos_df.merge(high_o, left_on=numero_credito_col_name, right_on='credito', how='inner')
-                        if 'credito_y' in high_o_details.columns : high_o_details = high_o_details.drop(columns=['credito_y']) # Drop redundant if names clash
+                        if 'credito_y' in high_o_details.columns : high_o_details = high_o_details.drop(columns=['credito_y'])
                         if 'credito_x' in high_o_details.columns : high_o_details = high_o_details.rename(columns={'credito_x':'credito'})
                         high_o_details.to_excel(writer, sheet_name='High Risk', index=False)
                     if not low_o.empty:
@@ -306,7 +237,6 @@ with tabs[3]: # Customer Data Quality
 
 with tabs[4]: # Pre-Loan Feature Insights
     st.header(tab_titles[4])
-    # ... (No changes to this tab's internal logic from previous version with fixed scatter plots) ...
     if not uploaded_file: st.write("Upload an Excel file and ensure 'ListadoCreditos' and risk scores are processed.")
     elif listado_creditos_df is None or risk_scores_df is None or risk_scores_df.empty: st.warning("Customer data ('ListadoCreditos') or Risk Scores are not available. Please check previous tabs/logs.")
     else:
@@ -387,134 +317,89 @@ with tabs[4]: # Pre-Loan Feature Insights
                                 else: st.info("No features processed for MI from selection.")
                             else: st.info("No features selected for MI.")
 
-
 with tabs[5]: # Segment Performance Analyzer
     st.header(tab_titles[5])
-
-    if not uploaded_file:
-        st.write("Upload an Excel file and ensure 'ListadoCreditos' and risk scores are processed.")
-    elif listado_creditos_df is None or risk_scores_df is None or risk_scores_df.empty:
-        st.warning("Customer data ('ListadoCreditos') or Risk Scores (with components) are not available. Please check processing.")
+    if not uploaded_file: st.write("Upload an Excel file and ensure 'ListadoCreditos' and risk scores are processed.")
+    elif listado_creditos_df is None or risk_scores_df is None or risk_scores_df.empty: st.warning("Customer data ('ListadoCreditos') or Risk Scores (with components) are not available. Please check processing.")
     else:
         st.subheader("Define Customer Segment")
-
-        # Merge listado_creditos with risk_scores_df (which now includes raw components)
-        # Ensure 'credito' in risk_scores_df is string, and numero_credito_col_name in listado_creditos_df is string
-        
-        # Defensive copy for merge
-        temp_listado_df = listado_creditos_df.copy()
-        temp_risk_scores_df = risk_scores_df.copy()
-
+        temp_listado_df = listado_creditos_df.copy(); temp_risk_scores_df = risk_scores_df.copy()
         temp_listado_df[numero_credito_col_name] = temp_listado_df[numero_credito_col_name].astype(str)
         temp_risk_scores_df['credito'] = temp_risk_scores_df['credito'].astype(str)
-
-        # Check for necessary columns in risk_scores_df
         required_risk_cols_for_segment = ['credito', 'risk_score'] + risk_score_component_names
-        if not all(col in temp_risk_scores_df.columns for col in required_risk_cols_for_segment):
-            st.error(f"Risk score data is missing one or more required columns for segmentation: {', '.join(required_risk_cols_for_segment)}")
+        if not all(col in temp_risk_scores_df.columns for col in required_risk_cols_for_segment): st.error(f"Risk score data missing required columns: {', '.join(required_risk_cols_for_segment)}")
         else:
-            # Perform the merge
-            segment_data_full = pd.merge(
-                temp_listado_df,
-                temp_risk_scores_df[required_risk_cols_for_segment], # Select only necessary columns
-                left_on=numero_credito_col_name,
-                right_on='credito',
-                how='inner'
-            )
-
-            if segment_data_full.empty:
-                st.warning("No matching records found between customer data and risk scores for segmentation.")
+            segment_data_full = pd.merge(temp_listado_df, temp_risk_scores_df[required_risk_cols_for_segment], left_on=numero_credito_col_name, right_on='credito', how='inner')
+            if segment_data_full.empty: st.warning("No matching records found between customer data and risk scores for segmentation.")
             else:
-                # Identify categorical columns from listado_creditos part of segment_data_full
-                # Exclude ID columns and component/score columns
-                demographic_cols = [
-                    col for col in listado_creditos_df.columns 
-                    if col not in [numero_credito_col_name] + required_risk_cols_for_segment # ensure we don't pick score columns
-                ]
-                
-                categorical_demographics = [
-                    col for col in demographic_cols 
-                    if segment_data_full[col].dtype == 'object' or segment_data_full[col].nunique() < 20 # Heuristic for categorical
-                ]
-
-
-                if not categorical_demographics:
-                    st.info("No suitable categorical demographic variables found for segmentation in 'ListadoCreditos'.")
+                demographic_cols = [col for col in listado_creditos_df.columns if col not in [numero_credito_col_name] + required_risk_cols_for_segment]
+                categorical_demographics = [col for col in demographic_cols if segment_data_full[col].dtype == 'object' or segment_data_full[col].nunique() < 20]
+                if not categorical_demographics: st.info("No suitable categorical demographic variables found in 'ListadoCreditos'.")
                 else:
-                    selected_segment_vars = st.multiselect(
-                        "Select demographic variables for segmentation:",
-                        options=categorical_demographics,
-                        default=categorical_demographics[0] if categorical_demographics else []
-                    )
-
+                    selected_segment_vars = st.multiselect("Select demographic variables for segmentation:", options=categorical_demographics, default=categorical_demographics[0] if categorical_demographics else [])
                     filters = {}
                     for var in selected_segment_vars:
                         unique_levels = sorted(segment_data_full[var].dropna().unique().astype(str))
-                        if unique_levels: #Proceed only if there are levels to select
-                            filters[var] = st.multiselect(
-                                f"Select levels for '{var}':",
-                                options=unique_levels,
-                                default=unique_levels # Default to all levels initially for simplicity for the user
-                            )
-                        else:
-                            st.caption(f"No selectable levels for '{var}' (column might be empty or all NaN).")
-
-
-                    # Apply filters
+                        if unique_levels: filters[var] = st.multiselect(f"Select levels for '{var}':", options=unique_levels, default=unique_levels)
+                        else: st.caption(f"No selectable levels for '{var}'.")
+                    
                     segmented_df = segment_data_full.copy()
                     if filters:
                         query_parts = []
                         for var, levels in filters.items():
-                            if levels: # Only apply filter if levels are selected
-                                # Ensure levels are treated as strings for query if original column is object
-                                str_levels = [f"'{str(level).replace(\"'\", \"\\'\")}'" for level in levels] # Escape single quotes in levels
-                                query_parts.append(f"`{var}` in ({', '.join(str_levels)})")
+                            if levels:
+                                # *** CORRECTED LINE FOR PANDAS QUERY STRING ESCAPING ***
+                                str_levels_for_query = []
+                                for level_item in levels:
+                                    escaped_level_item = str(level_item).replace("'", "\\'") # Escape single quotes within the level
+                                    str_levels_for_query.append(f"'{escaped_level_item}'") # Wrap with single quotes for query
+                                # *** END CORRECTION ***
+                                if str_levels_for_query: # Ensure list is not empty
+                                    query_parts.append(f"`{var}` in ({', '.join(str_levels_for_query)})")
                         
                         if query_parts:
-                            try:
-                                segmented_df = segmented_df.query(" and ".join(query_parts))
-                            except Exception as e:
-                                st.error(f"Error applying filters: {e}. This might be due to special characters in column names or levels.")
-                                segmented_df = pd.DataFrame() # Empty df on error
-
+                            try: segmented_df = segmented_df.query(" and ".join(query_parts))
+                            except Exception as e: st.error(f"Error applying filters: {e}. Check column/level names for special chars."); segmented_df = pd.DataFrame()
+                    
                     if not segmented_df.empty:
-                        st.markdown("---")
-                        st.subheader(f"Performance for Selected Segment ({len(segmented_df)} loans)")
-
-                        # Calculate averages for the segment
+                        st.markdown("---"); st.subheader(f"Performance for Selected Segment ({len(segmented_df)} loans)")
                         avg_risk_score_segment = segmented_df['risk_score'].mean()
                         avg_components_segment = segmented_df[risk_score_component_names].mean()
-
-                        segment_summary_data = {'Metric': ['Risk Score'] + risk_score_component_names,
-                                                'Segment Average': [avg_risk_score_segment] + avg_components_segment.tolist()}
+                        segment_summary_data = {'Metric': ['Risk Score'] + risk_score_component_names, 'Segment Average': [avg_risk_score_segment] + avg_components_segment.tolist()}
                         segment_summary_df = pd.DataFrame(segment_summary_data)
+                        format_dict_segment = {"Segment Average": "{:.4f}"} # General format
+                        # Specific formats for components
+                        for i, comp_name in enumerate(['Risk Score'] + risk_score_component_names):
+                            if 'ratio' in comp_name: segment_summary_df.loc[segment_summary_df['Metric'] == comp_name, 'Segment Average'] = avg_components_segment[i-1] if i > 0 else avg_risk_score_segment # Ensure correct indexing for components
+                            elif 'count' in comp_name: segment_summary_df.loc[segment_summary_df['Metric'] == comp_name, 'Segment Average'] = avg_components_segment[i-1] if i > 0 else avg_risk_score_segment
+                        
+                        # Re-apply formatting based on metric name for clarity
+                        styled_segment_summary = segment_summary_df.set_index('Metric').style
+                        for metric_name in segment_summary_df['Metric']:
+                            if metric_name == 'Risk Score': styled_segment_summary.format({"Segment Average": "{:.4f}"}, subset=pd.IndexSlice[[metric_name], :])
+                            elif 'ratio' in metric_name : styled_segment_summary.format({"Segment Average": "{:.2%}"}, subset=pd.IndexSlice[[metric_name], :])
+                            elif 'count' in metric_name : styled_segment_summary.format({"Segment Average": "{:.2f}"}, subset=pd.IndexSlice[[metric_name], :])
+                        st.dataframe(styled_segment_summary)
 
-                        # Formatting for display
-                        format_dict_segment = {"Segment Average": "{:.4f}"}
-                        for comp in risk_score_component_names:
-                            if 'ratio' in comp: format_dict_segment[comp] = "{:.2%}" # For ratios
-                            elif 'count' in comp: format_dict_segment[comp] = "{:.2f}" # For counts
-
-                        st.dataframe(segment_summary_df.set_index('Metric').style.format(format_dict_segment))
-
-                        # Optional: Comparison with overall portfolio averages
                         with st.expander("Compare with Overall Portfolio Averages"):
                             avg_risk_score_overall = risk_scores_df['risk_score'].mean()
                             avg_components_overall = risk_scores_df[risk_score_component_names].mean()
-                            
-                            overall_summary_data = {'Metric': ['Risk Score'] + risk_score_component_names,
-                                                    'Overall Average': [avg_risk_score_overall] + avg_components_overall.tolist()}
+                            overall_summary_data = {'Metric': ['Risk Score'] + risk_score_component_names, 'Overall Average': [avg_risk_score_overall] + avg_components_overall.tolist()}
                             overall_summary_df = pd.DataFrame(overall_summary_data)
-                            
                             comparison_df = pd.merge(segment_summary_df, overall_summary_df, on="Metric")
-                            st.dataframe(comparison_df.set_index('Metric').style.format({"Segment Average":"{:.4f}", "Overall Average":"{:.4f}"}))
-
-                    elif filters and not query_parts: # Filters selected but no levels chosen for any
-                        st.info("Please select levels for at least one chosen demographic variable to see segment performance.")
-                    elif filters and query_parts: # Filters applied but resulted in empty df
-                        st.info("No customers found matching all selected criteria.")
-                    else: # No filters selected yet
-                        st.info("Select demographic variables and their levels to analyze segment performance.")
-# --- Footer ---
+                            
+                            # Apply styling to comparison_df
+                            styled_comparison = comparison_df.set_index('Metric').style
+                            for metric_name in comparison_df['Metric']:
+                                if metric_name == 'Risk Score': 
+                                    styled_comparison.format({"Segment Average":"{:.4f}", "Overall Average":"{:.4f}"}, subset=pd.IndexSlice[[metric_name], :])
+                                elif 'ratio' in metric_name : 
+                                    styled_comparison.format({"Segment Average":"{:.2%}", "Overall Average":"{:.2%}"}, subset=pd.IndexSlice[[metric_name], :])
+                                elif 'count' in metric_name : 
+                                    styled_comparison.format({"Segment Average":"{:.2f}", "Overall Average":"{:.2f}"}, subset=pd.IndexSlice[[metric_name], :])
+                            st.dataframe(styled_comparison)
+                    elif filters and not query_parts: st.info("Please select levels for at least one chosen demographic variable.")
+                    elif filters and query_parts: st.info("No customers found matching all selected criteria.")
+                    else: st.info("Select demographic variables and their levels to analyze segment performance.")
 st.markdown("---")
-st.markdown("App developed by your Expert Data Scientist Antonio Medrano, CepSA.")
+st.markdown("App developed by your Expert Data Scientist.")
