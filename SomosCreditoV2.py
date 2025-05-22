@@ -9,9 +9,7 @@ from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 from scipy.stats import chi2_contingency, f_oneway
 
 # --- Core Risk Score Calculation Logic ---
-# MODIFIED to return raw components as well
 def calculate_risk_score_df(df_input, grace_period_days, weights):
-    # ... (No changes here, same as previous version) ...
     if df_input.empty: return None
     df = df_input.copy()
     required_cols = ['fechaDesembolso', 'fechaEsperadaPago', 'fechaPagoRecibido', 'fechaRegistro', 'fechaTRansaccion', 'credito', 'reglaCobranza', 'cuotaCubierta', 'cuotaEsperada', 'saldoCapitalActual', 'totalDesembolso', 'cobranzaTrans', 'categoriaProductoCrediticio']
@@ -73,9 +71,8 @@ def cramers_v(confusion_matrix):
     phi2 = chi2 / n; r, k = confusion_matrix.shape
     if r == 1 or k == 1 or n == 0: return 0
     phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1)); rcorr = r - ((r-1)**2)/(n-1); kcorr = k - ((k-1)**2)/(n-1)
-    if rcorr < 1 or kcorr < 1 : return 0 # Avoid division by zero or sqrt of negative
+    if rcorr < 1 or kcorr < 1 : return 0 
     return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
-
 
 # --- Data Preparation for Feature Importance Tab ---
 @st.cache_data
@@ -153,7 +150,7 @@ if uploaded_file:
     st.sidebar.text_area("File Processing Log", processed_data_info, height=200)
 else: st.info("☝️ Upload an Excel file to begin.")
 
-tab_titles = ["📊 Risk Scores", "📈 Risk EDA", "🕵️ Outlier Analysis", "📋 Customer Data Quality", "🔍 Pre-Loan Feature Insights", " сегмент Segment Performance"]
+tab_titles = ["📊 Risk Scores", "📈 Risk EDA", "🕵️ Outlier Analysis", "📋 Customer Data Quality", "🔍 Pre-Loan Feature Insights", "📊 Segment Performance"]
 tabs = st.tabs(tab_titles)
 
 with tabs[0]: # Risk Scores
@@ -161,7 +158,16 @@ with tabs[0]: # Risk Scores
     if risk_scores_df is not None and not risk_scores_df.empty:
         st.subheader("Calculated Risk Scores & Components (per Credit)")
         display_cols_scores = ['credito', 'risk_score'] + risk_score_component_names
-        st.dataframe(risk_scores_df[display_cols_scores].style.format({"risk_score": "{:.4f}", "late_payment_ratio": "{:.2%}", "payment_coverage_ratio": "{:.2%}", "outstanding_balance_ratio": "{:.2%}", "collection_activity_count": "{:.0f}"}), height=500, use_container_width=True)
+        
+        style_format_dict_tab0 = {
+            "risk_score": "{:.4f}",
+            "late_payment_ratio": "{:.4f}", # Corrected: Display as decimal
+            "payment_coverage_ratio": "{:.4f}", # Corrected: Display as decimal
+            "outstanding_balance_ratio": "{:.4f}", # Corrected: Display as decimal
+            "collection_activity_count": "{:.0f}" 
+        }
+        
+        st.dataframe(risk_scores_df[display_cols_scores].style.format(style_format_dict_tab0), height=500, use_container_width=True)
         output = io.BytesIO(); risk_scores_df.to_excel(pd.ExcelWriter(output, engine='xlsxwriter'), index=False, sheet_name='RiskScoresAndComponents'); excel_data = output.getvalue()
         st.download_button(label="📥 Download Scores & Components", data=excel_data, file_name=f"risk_scores_components_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.ms-excel")
     elif uploaded_file and historico_pago_cuotas_loaded: st.warning("Risk scores not calculated. Check log.")
@@ -318,7 +324,7 @@ with tabs[4]: # Pre-Loan Feature Insights
                             else: st.info("No features selected for MI.")
 
 with tabs[5]: # Segment Performance Analyzer
-    st.header(tab_titles[5])
+    st.header(tab_titles[5]) 
     if not uploaded_file: st.write("Upload an Excel file and ensure 'ListadoCreditos' and risk scores are processed.")
     elif listado_creditos_df is None or risk_scores_df is None or risk_scores_df.empty: st.warning("Customer data ('ListadoCreditos') or Risk Scores (with components) are not available. Please check processing.")
     else:
@@ -348,13 +354,11 @@ with tabs[5]: # Segment Performance Analyzer
                         query_parts = []
                         for var, levels in filters.items():
                             if levels:
-                                # *** CORRECTED LINE FOR PANDAS QUERY STRING ESCAPING ***
                                 str_levels_for_query = []
                                 for level_item in levels:
-                                    escaped_level_item = str(level_item).replace("'", "\\'") # Escape single quotes within the level
-                                    str_levels_for_query.append(f"'{escaped_level_item}'") # Wrap with single quotes for query
-                                # *** END CORRECTION ***
-                                if str_levels_for_query: # Ensure list is not empty
+                                    escaped_level_item = str(level_item).replace("'", "\\'") 
+                                    str_levels_for_query.append(f"'{escaped_level_item}'")
+                                if str_levels_for_query:
                                     query_parts.append(f"`{var}` in ({', '.join(str_levels_for_query)})")
                         
                         if query_parts:
@@ -364,40 +368,42 @@ with tabs[5]: # Segment Performance Analyzer
                     if not segmented_df.empty:
                         st.markdown("---"); st.subheader(f"Performance for Selected Segment ({len(segmented_df)} loans)")
                         avg_risk_score_segment = segmented_df['risk_score'].mean()
-                        avg_components_segment = segmented_df[risk_score_component_names].mean()
-                        segment_summary_data = {'Metric': ['Risk Score'] + risk_score_component_names, 'Segment Average': [avg_risk_score_segment] + avg_components_segment.tolist()}
-                        segment_summary_df = pd.DataFrame(segment_summary_data)
-                        format_dict_segment = {"Segment Average": "{:.4f}"} # General format
-                        # Specific formats for components
-                        for i, comp_name in enumerate(['Risk Score'] + risk_score_component_names):
-                            if 'ratio' in comp_name: segment_summary_df.loc[segment_summary_df['Metric'] == comp_name, 'Segment Average'] = avg_components_segment[i-1] if i > 0 else avg_risk_score_segment # Ensure correct indexing for components
-                            elif 'count' in comp_name: segment_summary_df.loc[segment_summary_df['Metric'] == comp_name, 'Segment Average'] = avg_components_segment[i-1] if i > 0 else avg_risk_score_segment
+                        avg_components_segment = segmented_df[risk_score_component_names].mean().to_dict()
                         
-                        # Re-apply formatting based on metric name for clarity
-                        styled_segment_summary = segment_summary_df.set_index('Metric').style
-                        for metric_name in segment_summary_df['Metric']:
-                            if metric_name == 'Risk Score': styled_segment_summary.format({"Segment Average": "{:.4f}"}, subset=pd.IndexSlice[[metric_name], :])
-                            elif 'ratio' in metric_name : styled_segment_summary.format({"Segment Average": "{:.2%}"}, subset=pd.IndexSlice[[metric_name], :])
-                            elif 'count' in metric_name : styled_segment_summary.format({"Segment Average": "{:.2f}"}, subset=pd.IndexSlice[[metric_name], :])
-                        st.dataframe(styled_segment_summary)
+                        segment_summary_list = [{'Metric': 'Risk Score', 'Segment Average': avg_risk_score_segment}]
+                        for comp_name in risk_score_component_names:
+                            segment_summary_list.append({'Metric': comp_name, 'Segment Average': avg_components_segment.get(comp_name, np.nan)})
+                        segment_summary_df = pd.DataFrame(segment_summary_list)
+
+                        # Corrected formatting for Segment Performance Tab
+                        def format_value_segment_tab(val, metric_name):
+                            if pd.isna(val): return "N/A"
+                            if metric_name == 'Risk Score': return f"{val:.4f}"
+                            if 'ratio' in metric_name : return f"{val:.4f}" # Display ratios as decimals
+                            if 'count' in metric_name : return f"{val:.2f}"
+                            return f"{val:.4f}" 
+
+                        segment_summary_df['Segment Average Formatted'] = segment_summary_df.apply(
+                            lambda row: format_value_segment_tab(row['Segment Average'], row['Metric']), axis=1
+                        )
+                        st.dataframe(segment_summary_df[['Metric', 'Segment Average Formatted']].set_index('Metric'))
 
                         with st.expander("Compare with Overall Portfolio Averages"):
                             avg_risk_score_overall = risk_scores_df['risk_score'].mean()
-                            avg_components_overall = risk_scores_df[risk_score_component_names].mean()
-                            overall_summary_data = {'Metric': ['Risk Score'] + risk_score_component_names, 'Overall Average': [avg_risk_score_overall] + avg_components_overall.tolist()}
-                            overall_summary_df = pd.DataFrame(overall_summary_data)
-                            comparison_df = pd.merge(segment_summary_df, overall_summary_df, on="Metric")
+                            avg_components_overall = risk_scores_df[risk_score_component_names].mean().to_dict()
                             
-                            # Apply styling to comparison_df
-                            styled_comparison = comparison_df.set_index('Metric').style
-                            for metric_name in comparison_df['Metric']:
-                                if metric_name == 'Risk Score': 
-                                    styled_comparison.format({"Segment Average":"{:.4f}", "Overall Average":"{:.4f}"}, subset=pd.IndexSlice[[metric_name], :])
-                                elif 'ratio' in metric_name : 
-                                    styled_comparison.format({"Segment Average":"{:.2%}", "Overall Average":"{:.2%}"}, subset=pd.IndexSlice[[metric_name], :])
-                                elif 'count' in metric_name : 
-                                    styled_comparison.format({"Segment Average":"{:.2f}", "Overall Average":"{:.2f}"}, subset=pd.IndexSlice[[metric_name], :])
-                            st.dataframe(styled_comparison)
+                            overall_summary_list = [{'Metric': 'Risk Score', 'Overall Average': avg_risk_score_overall}]
+                            for comp_name in risk_score_component_names:
+                                overall_summary_list.append({'Metric': comp_name, 'Overall Average': avg_components_overall.get(comp_name, np.nan)})
+                            overall_summary_df = pd.DataFrame(overall_summary_list)
+                            
+                            comparison_df = pd.merge(segment_summary_df[['Metric','Segment Average']], overall_summary_df, on="Metric")
+
+                            for col_to_format in ['Segment Average', 'Overall Average']:
+                                comparison_df[col_to_format + ' Formatted'] = comparison_df.apply(
+                                    lambda row: format_value_segment_tab(row[col_to_format], row['Metric']), axis=1 # Use same formatter
+                                )
+                            st.dataframe(comparison_df[['Metric', 'Segment Average Formatted', 'Overall Average Formatted']].set_index('Metric'))
                     elif filters and not query_parts: st.info("Please select levels for at least one chosen demographic variable.")
                     elif filters and query_parts: st.info("No customers found matching all selected criteria.")
                     else: st.info("Select demographic variables and their levels to analyze segment performance.")
