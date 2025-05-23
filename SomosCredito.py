@@ -440,4 +440,4 @@ with tabs[5]: # Segment Performance Analyzer
                     else: # No filters selected yet, or no levels chosen for any variable
                         st.info("Select demographic variables and their levels to analyze segment performance.")
 st.markdown("---")
-st.markdown("App developed by your Expert Data Scientist.")
+st.markdown("App developed by your Expert Data Scientist, Antonio Medrano, CepSA.")
