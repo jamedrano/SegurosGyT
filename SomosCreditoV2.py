@@ -12,60 +12,43 @@ from scipy.stats import chi2_contingency, f_oneway
 def calculate_risk_score_df(df_input, grace_period_days, weights):
     if df_input.empty: return None
     df = df_input.copy()
-    
-    # 'totalTrans' is now essential for payment coverage
     required_base_cols = ['fechaDesembolso', 'fechaEsperadaPago', 'fechaPagoRecibido', 'fechaRegistro', 
                           'fechaTRansaccion', 'credito', 'reglaCobranza', 
-                          'cuotaEsperada', 'totalTrans', # Added totalTrans
+                          'cuotaEsperada', 'totalTrans', 
                           'saldoCapitalActual', 'totalDesembolso', 
                           'cobranzaTrans', 'categoriaProductoCrediticio']
     required_cols = required_base_cols 
-
     missing_cols = [col for col in required_cols if col not in df.columns]
-    if missing_cols: 
-        st.error(f"Sheet 'HistoricoPagoCuotas' missing columns: {', '.join(missing_cols)}")
-        return None
-        
+    if missing_cols: st.error(f"Sheet 'HistoricoPagoCuotas' missing columns: {', '.join(missing_cols)}"); return None
     date_cols = ['fechaDesembolso', 'fechaEsperadaPago', 'fechaPagoRecibido', 'fechaRegistro', 'fechaTRansaccion']
     for col in date_cols:
         if col in df.columns: df[col] = pd.to_datetime(df[col], errors='coerce')
-    
     df['credito'] = df['credito'].astype(str)
     grace_period = pd.Timedelta(days=grace_period_days)
-    
     mask_valid_dates_late_payment = df['fechaPagoRecibido'].notna() & df['fechaEsperadaPago'].notna()
     df['late_payment'] = 0
     df.loc[mask_valid_dates_late_payment, 'late_payment'] = (df.loc[mask_valid_dates_late_payment, 'fechaPagoRecibido'] > (df.loc[mask_valid_dates_late_payment, 'fechaEsperadaPago'] + grace_period)).astype(int)
-    
     late_payment_counts = df.groupby('credito')['late_payment'].sum()
     total_payments_due_count = df.groupby('credito')['fechaEsperadaPago'].count()
     late_payment_ratio = (late_payment_counts / total_payments_due_count.replace(0, np.nan)).fillna(0)
-    
     df['totalTrans'] = pd.to_numeric(df['totalTrans'], errors='coerce').fillna(0) 
     total_payment_made_monetary = df.groupby('credito')['totalTrans'].sum() 
-    
     df['cuotaEsperada'] = pd.to_numeric(df['cuotaEsperada'], errors='coerce').fillna(0) 
     total_payment_expected_monetary = df.groupby('credito')['cuotaEsperada'].sum()
-    
-    payment_coverage_ratio = (total_payment_made_monetary / total_payment_expected_monetary.replace(0, np.nan))
-    payment_coverage_ratio = payment_coverage_ratio.fillna(1).replace([np.inf, -np.inf], 1) 
-        
+    payment_coverage_ratio = (total_payment_made_monetary / total_payment_expected_monetary.replace(0, np.nan)).fillna(1).replace([np.inf, -np.inf], 1) 
     df['saldoCapitalActual'] = pd.to_numeric(df['saldoCapitalActual'], errors='coerce')
     df['totalDesembolso'] = pd.to_numeric(df['totalDesembolso'], errors='coerce')
     last_saldo = df.groupby('credito')['saldoCapitalActual'].last()
     first_desembolso = df.groupby('credito')['totalDesembolso'].first()
     outstanding_balance_ratio = (last_saldo / first_desembolso.replace(0, np.nan)).fillna(0)
-    
     df['cobranzaTrans'] = pd.to_numeric(df['cobranzaTrans'], errors='coerce').fillna(0)
     df['collection_activity'] = (df['cobranzaTrans'] > 0).astype(int)
     collection_activity_count = df.groupby('credito')['collection_activity'].sum()
-    
     creditos_unicos = pd.DataFrame(df['credito'].unique(), columns=['credito'])
     creditos_unicos = creditos_unicos.merge(late_payment_ratio.to_frame(name='late_payment_ratio'), left_on='credito', right_index=True, how='left').fillna({'late_payment_ratio': 0})
     creditos_unicos = creditos_unicos.merge(payment_coverage_ratio.to_frame(name='payment_coverage_ratio'), left_on='credito', right_index=True, how='left').fillna({'payment_coverage_ratio': 1})
     creditos_unicos = creditos_unicos.merge(outstanding_balance_ratio.to_frame(name='outstanding_balance_ratio'), left_on='credito', right_index=True, how='left').fillna({'outstanding_balance_ratio': 0})
     creditos_unicos = creditos_unicos.merge(collection_activity_count.to_frame(name='collection_activity_count'), left_on='credito', right_index=True, how='left').fillna({'collection_activity_count': 0})
-    
     df_for_return = creditos_unicos.copy()
     component_cols_to_scale = ['late_payment_ratio', 'payment_coverage_ratio', 'outstanding_balance_ratio', 'collection_activity_count']
     for col_name in component_cols_to_scale:
@@ -74,13 +57,7 @@ def calculate_risk_score_df(df_input, grace_period_days, weights):
         if max_val == min_val: df_for_return[scaled_col_name] = 0.0
         else: df_for_return[scaled_col_name] = (creditos_unicos[col_name] - min_val) / (max_val - min_val)
         df_for_return[scaled_col_name] = df_for_return[scaled_col_name].fillna(0)
-        
-    df_for_return['risk_score'] = (
-        weights['late_payment_ratio'] * df_for_return['late_payment_ratio_scaled'] + 
-        weights['payment_coverage_ratio'] * (1 - df_for_return['payment_coverage_ratio_scaled']) + 
-        weights['outstanding_balance_ratio'] * df_for_return['outstanding_balance_ratio_scaled'] + 
-        weights['collection_activity_count'] * df_for_return['collection_activity_count_scaled']
-    )
+    df_for_return['risk_score'] = (weights['late_payment_ratio'] * df_for_return['late_payment_ratio_scaled'] + weights['payment_coverage_ratio'] * (1 - df_for_return['payment_coverage_ratio_scaled']) + weights['outstanding_balance_ratio'] * df_for_return['outstanding_balance_ratio_scaled'] + weights['collection_activity_count'] * df_for_return['collection_activity_count_scaled'])
     cols_to_return = ['credito', 'risk_score', 'late_payment_ratio', 'payment_coverage_ratio', 'outstanding_balance_ratio', 'collection_activity_count']
     return df_for_return[cols_to_return]
 
@@ -188,10 +165,8 @@ with tabs[0]: # Risk Scores
         display_cols_scores = ['credito', 'risk_score'] + risk_score_component_names
         
         style_format_dict_tab0 = {
-            "risk_score": "{:.4f}",
-            "late_payment_ratio": "{:.4f}", 
-            "payment_coverage_ratio": "{:.4f}", 
-            "outstanding_balance_ratio": "{:.4f}", 
+            "risk_score": "{:.4f}", "late_payment_ratio": "{:.4f}", 
+            "payment_coverage_ratio": "{:.4f}", "outstanding_balance_ratio": "{:.4f}", 
             "collection_activity_count": "{:.0f}" 
         }
         
@@ -374,7 +349,13 @@ with tabs[5]: # Segment Performance Analyzer
                     filters = {}
                     for var in selected_segment_vars:
                         unique_levels = sorted(segment_data_full[var].dropna().unique().astype(str))
-                        if unique_levels: filters[var] = st.multiselect(f"Select levels for '{var}':", options=unique_levels, default=unique_levels)
+                        if unique_levels: 
+                            default_level_selection = [unique_levels[0]] if unique_levels else [] # MODIFIED DEFAULT
+                            filters[var] = st.multiselect(
+                                f"Select levels for '{var}':", 
+                                options=unique_levels, 
+                                default=default_level_selection
+                            )
                         else: st.caption(f"No selectable levels for '{var}'.")
                     
                     segmented_df = segment_data_full.copy()
