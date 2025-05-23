@@ -165,14 +165,31 @@ with tabs[0]: # Risk Scores
         display_cols_scores = ['credito', 'risk_score'] + risk_score_component_names
         
         style_format_dict_tab0 = {
-            "risk_score": "{:.4f}", "late_payment_ratio": "{:.4f}", 
-            "payment_coverage_ratio": "{:.4f}", "outstanding_balance_ratio": "{:.4f}", 
+            "risk_score": "{:.4f}",
+            "late_payment_ratio": "{:.4f}", 
+            "payment_coverage_ratio": "{:.4f}", 
+            "outstanding_balance_ratio": "{:.4f}", 
             "collection_activity_count": "{:.0f}" 
         }
         
         st.dataframe(risk_scores_df[display_cols_scores].style.format(style_format_dict_tab0), height=500, use_container_width=True)
-        output = io.BytesIO(); risk_scores_df.to_excel(pd.ExcelWriter(output, engine='xlsxwriter'), index=False, sheet_name='RiskScoresAndComponents'); excel_data = output.getvalue()
-        st.download_button(label="📥 Download Scores & Components", data=excel_data, file_name=f"risk_scores_components_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.ms-excel")
+        
+        # Download Logic for Tab 0
+        output_tab0 = io.BytesIO()
+        with pd.ExcelWriter(output_tab0, engine='xlsxwriter') as writer_tab0:
+            risk_scores_df.to_excel(writer_tab0, index=False, sheet_name='RiskScoresAndComponents')
+        excel_data_tab0 = output_tab0.getvalue()
+
+        if excel_data_tab0: # Ensure data is not empty
+            st.download_button(
+                label="📥 Download Scores & Components",
+                data=excel_data_tab0,
+                file_name=f"risk_scores_components_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+            )
+        else:
+            st.warning("Could not generate Excel file for download (data might be empty).")
+            
     elif uploaded_file and historico_pago_cuotas_loaded: st.warning("Risk scores not calculated. Check log.")
     elif uploaded_file and not historico_pago_cuotas_loaded: st.error("'HistoricoPagoCuotas' failed to load.")
     else: st.write("Upload file for results.")
@@ -215,7 +232,11 @@ with tabs[2]: # Outlier Analysis
                         if 'credito_y' in low_o_details.columns : low_o_details = low_o_details.drop(columns=['credito_y'])
                         if 'credito_x' in low_o_details.columns : low_o_details = low_o_details.rename(columns={'credito_x':'credito'})
                         low_o_details.to_excel(writer, sheet_name='Low Risk', index=False)
-                st.download_button(label="📥 Download Outlier Details", data=output_o.getvalue(), file_name=f"outliers_detailed_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.ms-excel")
+                excel_data_outlier = output_o.getvalue()
+                if excel_data_outlier:
+                    st.download_button(label="📥 Download Outlier Details", data=excel_data_outlier, file_name=f"outliers_detailed_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                else:
+                    st.warning("Could not generate outlier details Excel file.")
             else: st.info("No outliers to download.")
         elif uploaded_file: st.warning(f"'ListadoCreditos' or '{numero_credito_col_name}' issue. Check log.")
     elif uploaded_file: st.warning("Risk scores unavailable.")
@@ -350,7 +371,7 @@ with tabs[5]: # Segment Performance Analyzer
                     for var in selected_segment_vars:
                         unique_levels = sorted(segment_data_full[var].dropna().unique().astype(str))
                         if unique_levels: 
-                            default_level_selection = [unique_levels[0]] if unique_levels else [] # MODIFIED DEFAULT
+                            default_level_selection = [unique_levels[0]] if unique_levels else [] 
                             filters[var] = st.multiselect(
                                 f"Select levels for '{var}':", 
                                 options=unique_levels, 
@@ -362,7 +383,7 @@ with tabs[5]: # Segment Performance Analyzer
                     if filters:
                         query_parts = []
                         for var, levels in filters.items():
-                            if levels:
+                            if levels: # Only apply filter if levels are actually selected by the user
                                 str_levels_for_query = []
                                 for level_item in levels:
                                     escaped_level_item = str(level_item).replace("'", "\\'") 
@@ -412,8 +433,11 @@ with tabs[5]: # Segment Performance Analyzer
                                     lambda row: format_value_segment_tab(row[col_to_format], row['Metric']), axis=1 
                                 )
                             st.dataframe(comparison_df[['Metric', 'Segment Average Formatted', 'Overall Average Formatted']].set_index('Metric'))
-                    elif filters and not query_parts: st.info("Please select levels for at least one chosen demographic variable.")
-                    elif filters and query_parts: st.info("No customers found matching all selected criteria.")
-                    else: st.info("Select demographic variables and their levels to analyze segment performance.")
+                    elif filters and not query_parts and any(filters.values()): # User selected variables but no levels for any of them
+                        st.info("Please select specific levels for the chosen demographic variables to see segment performance.")
+                    elif filters and query_parts and segmented_df.empty : # Filters applied but resulted in empty
+                        st.info("No customers found matching all selected criteria.")
+                    else: # No filters selected yet, or no levels chosen for any variable
+                        st.info("Select demographic variables and their levels to analyze segment performance.")
 st.markdown("---")
-st.markdown("App developed by your Expert Data Scientist, Antonio Medrano, CepSA.")
+st.markdown("App developed by your Expert Data Scientist.")
