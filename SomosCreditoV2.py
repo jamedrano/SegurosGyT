@@ -372,7 +372,7 @@ with tabs[2]: # Outlier Analysis
         else:
             st.write("No low-risk outliers.")
         st.markdown("---"); st.subheader("Download Outlier Details")
-        if listado_creditos_loaded and listado_creditos_df is not not None and numero_credito_col_name in listado_creditos_df.columns:
+        if listado_creditos_loaded and listado_creditos_df is not None and numero_credito_col_name in listado_creditos_df.columns:
             if not high_o.empty or not low_o.empty:
                 output_o = io.BytesIO()
                 with pd.ExcelWriter(output_o, engine='xlsxwriter') as writer:
