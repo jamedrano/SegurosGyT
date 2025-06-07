@@ -329,7 +329,7 @@ with tabs[0]: # Risk Scores
 
 with tabs[1]: # Risk EDA
     st.header(tab_titles[1])
-    if risk_scores_df is not not None and not risk_scores_df.empty:
+    if risk_scores_df is not None and not risk_scores_df.empty:
         st.subheader("Risk Score Distribution")
         st.dataframe(risk_scores_df['risk_score'].describe().to_frame().T.style.format("{:.4f}"))
         col1, col2 = st.columns(2)
