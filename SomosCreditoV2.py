@@ -132,13 +132,11 @@ def prepare_preloan_insights_data(risk_df_with_components, listado_df, id_col_li
         return None, None, None, None, None, f"ID column '{id_col_listado}' not found in customer data."
     if target_col_name_in_risk_scores not in risk_df_with_components.columns:
         logger.error(f"prepare_preloan_insights_data: Target column '{target_col_name_in_risk_scores}' not found in risk scores.")
-        return None, None, None, None, None, f"Target column '{target_col_name_in_right_scores}' not found in risk scores."
-
+        return None, None, None, None, None, f"Target column '{target_col_name_in_risk_scores}' not found in risk scores."
     listado_copy = listado_df.copy()
     risk_scores_copy = risk_df_with_components.copy()
     listado_copy[id_col_listado] = listado_copy[id_col_listado].astype(str)
     risk_scores_copy['credito'] = risk_scores_copy['credito'].astype(str)
-    
     merged_df = pd.merge(
         listado_copy, # Take all columns from listado for now
         risk_scores_copy[['credito', target_col_name_in_risk_scores]], # Only target and ID from risk scores
@@ -197,12 +195,12 @@ def prepare_mi_data(risk_scores_data, listado_data, id_col_listado, target_col_n
         logger.error(f"prepare_mi_data: ID column '{id_col_listado}' not found in customer data.")
         return None, None, None, None, f"ID column '{id_col_listado}' not found in customer data."
     if target_col_name_in_risk_scores not in risk_scores_data.columns:
-        logger.error(f"prepare_mi_data: Target column '{target_col_name_in_right_scores}' not found in risk scores.")
+        logger.error(f"prepare_mi_data: Target column '{target_col_name_in_risk_scores}' not found in risk scores.")
         return None, None, None, None, f"Target column '{target_col_name_in_risk_scores}' not found in risk scores."
     listado_copy = listado_data.copy(); risk_scores_copy = risk_scores_data.copy()
     listado_copy[id_col_listado] = listado_copy[id_col_listado].astype(str)
     risk_scores_copy['credito'] = risk_scores_copy['credito'].astype(str)
-    merged_df_for_mi = pd.merge(listado_copy, risk_scores_copy[['credito', target_col_name_in_right_scores]], left_on=id_col_listado, right_on='credito', how='inner')
+    merged_df_for_mi = pd.merge(listado_copy, risk_scores_copy[['credito', target_col_name_in_risk_scores]], left_on=id_col_listado, right_on='credito', how='inner')
     if merged_df_for_mi.empty:
         logger.error("prepare_mi_data: No matching records found after merging.")
         return None, None, None, None, "No matching records found after merging."
@@ -232,8 +230,8 @@ def prepare_mi_data(risk_scores_data, listado_data, id_col_listado, target_col_n
     if X_mi.empty or not processed_feature_names_ordered:
         logger.error("prepare_mi_data: No features were processed for MI.")
         return None, None, None, None, "No features were processed for MI."
-    y_mi_target_name = target_col_name_in_right_scores
-    y_mi = merged_df_for_mi[target_col_name_in_right_scores].copy()
+    y_mi_target_name = target_col_name_in_risk_scores
+    y_mi = merged_df_for_mi[target_col_name_in_risk_scores].copy()
     if bin_target_flag:
         if y_mi.nunique() <= 1:
             logger.error(f"prepare_mi_data: Target '{y_mi_target_name}' has <=1 unique value, cannot bin.")
@@ -317,7 +315,7 @@ with tabs[0]: # Risk Scores
             risk_scores_df.to_excel(writer_tab0, index=False, sheet_name='RiskScoresAndComponents')
         excel_data_tab0 = output_tab0.getvalue()
         if excel_data_tab0:
-            st.download_button(label="📥 Download Scores & Components", data=excel_data_tab0, file_name=f"risk_scores_components_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            st.download_button(label="Download Scores & Components", data=excel_data_tab0, file_name=f"risk_scores_components_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         else:
             st.warning("Could not generate Excel file for download.")
     elif uploaded_file and historico_pago_cuotas_loaded:
@@ -413,7 +411,7 @@ with tabs[3]: # Customer Data Quality
     else:
         df_dqa = listado_creditos_df
         st.subheader("1. Overview")
-        st.write(f"Rows: {df_dqa.shape[0]}, Columns: {df_dqa.shape[1]}");
+        st.write(f"Rows: {df_dqa.shape[0]}, Columns: {df_dqa.shape[1]});
         with st.expander("Data Types"):
             st.dataframe(df_dqa.dtypes.reset_index().rename(columns={'index':'Col',0:'Type'}))
         st.subheader("2. Missing Values")
@@ -426,14 +424,14 @@ with tabs[3]: # Customer Data Quality
         else:
             st.success("No missing values! 🎉")
         st.subheader("3. Duplicates")
-        st.write(f"Full Duplicates: {df_dqa.duplicated().sum()}")
+        st.write(f"Full Duplicates: {df_dqa.duplicated().sum()")
         if numero_credito_col_name in df_dqa.columns:
             st.write(f"'{numero_credito_col_name}' Duplicates: {df_dqa.duplicated(subset=[numero_credito_col_name]).sum()}")
         st.subheader("4. Column Analysis")
         default_dqa_col = [df_dqa.columns[0]] if len(df_dqa.columns) > 0 else []
         cols_detail = st.multiselect("Select columns for detail:", options=df_dqa.columns.tolist(), default=default_dqa_col)
         for col in cols_detail:
-            with st.expander(f"'{col}' (Type: {df_dqa[col].dtype}"):
+            with st.expander(f"'{col}' (Type: {df_dqa[col].dtype}):
                 st.write(f"Unique: {df_dqa[col].nunique()}, Missing: {df_dqa[col].isnull().sum()} ({df_dqa[col].isnull().sum()/len(df_dqa)*100:.2f}%)")
                 if pd.api.types.is_numeric_dtype(df_dqa[col]):
                     st.dataframe(df_dqa[col].describe().to_frame().T)
@@ -467,11 +465,11 @@ with tabs[4]: # Pre-Loan Insights
                         # Using prepare_preloan_insights_data for this tab
                         prep_result_tab4 = prepare_preloan_insights_data(
                             risk_scores_df, listado_creditos_df, numero_credito_col_name,
-                            'risk_score', selected_cols_fii_prev_tab,
+                            'risk_score', selected_cols_fi_prev_tab,
                             "Binned" in chosen_target_type_prev_tab, num_bins_fi_prev_tab
                         )
                         # Unpack results for Tab 4
-                        features_for_analysis_df_tab4, target_series_tab4, actual_features_analyzed_tab4, \
+                        features_for_analysis_df_tab4, target_series_tab4, actual_features_analyzed_tab4,
                         original_feature_dtypes_tab4, final_target_name_tab4, error_message_tab4 = prep_result_tab4
                         if error_message_tab4:
                             st.error(f"Data Prep Error (Pre-Loan Insights): {error_message_tab4}")
@@ -681,37 +679,37 @@ with tabs[6]: # Feature MI Ranker
         mi_num_bins = 3
         if "Binned" in mi_chosen_target_type:
             mi_num_bins = st.slider("Number of bins for Risk Score (MI Ranker):", 2, 10, 3, 1, key="mi_ranker_bins")
-        mi_available_features = [col for col in listado_creditos_df.columns if col not in [numero_credito_col_name]]
-        if not mi_available_features:
+        mi_available_features = [col for col in listado_creditos_df.columns if col not in [numero_credito_col name]
+        if not mi_available features:
             st.error("No features available from 'ListadoCreditos' for MI ranking.")
         else:
-            default_mi_cols = mi_available_features[:min(5, len(mi_available_features))
-            selected_cols_for_mi = st.multiselect("Select features from 'ListadoCreditos' for MI calculation:", options=mi available features, default=default_mi_cols, key="mi_ranker_features")
-            if st.button("Calculate Mutual Information", key="mi_ranker_button"):
-                if not selected_cols_for_mi:
+            default_mi_cols = mi_available features[:min(5, len(mi available features))
+            selected_cols_for_mi = st.multiselect("Select features from 'ListadoCreditos' for MI calculation:", options=mi available features, default=default_mi_cols, key="mi_ranker features")
+            if st.button("Calculate Mutual Information", key="mi ranker button"):
+                if not selected cols for mi:
                     st.warning("Please select at least one feature for MI calculation.")
                 else:
-                    with st.spinner("Preparing data and calculating Mutual Information..."):
-                        X_mi_prepared, y_mi_prepared, processed_names_mi, discrete_feature_mask_mi, mi_error_message = prepare_mi_data(risk_scores_df, listado_creditos_df, numero_credito_col_name, 'risk_score', selected_cols_for_mi, "Binned" in mi_chosen_target_type, mi_num_bins)
-                        if mi_error_message:
+                    with st spinner("Preparing data and calculating Mutual Information..."):
+                        X mi prepared, y mi prepared, processed names mi, discrete feature mask mi, mi error message = prepare mi data(risk scores df, listado creditos df, numero credito col name, 'risk score', selected cols for mi, "Binned" in mi chosen target type, mi num bins)
+                        if mi error message:
                             st.error(f"MI Data Preparation Error: {mi error message}
-                        elif X_mi_prepared is None or y_mi_prepared is None or not processed_names_mi:
+                        elif X mi prepared is None or y mi prepared is None or not processed names mi:
                             st.error("Failed to prepare data for MI calculation. Check selected features or data integrity.")
                         else:
-                            st.success(f"Data prepared. Calculating MI for {len(processed_names_mi) features.")
-                            mi_function_to_use = mutual_info_classif if "Binned" in mi_chosen_target_type else mutual_info_regression
-                            effective_discrete_mask_mi = discrete_feature_mask_mi if len(discrete_feature_mask_mi) == X_mi_prepared.shape[1] else 'auto'
-                            mi_scores_values = mi_function_to_use(X_mi_prepared, y_mi_prepared, discrete_features=effective_discrete_mask_mi, random_state=42)
-                            mi_results_df = pd.DataFrame({'Feature': processed_names_mi, 'Mutual Information Score': mi scores values).sort_values(by='Mutual Information Score', ascending=False)
-                            st.subheader("Mutual Information Scores with Risk Score")
-                            st.dataframe(mi results df.style.format({'Mutual Information Score': "{:.4f}"))
-                            if not mi results df.empty:
-                                fig_mi ranker, ax mi ranker = plt.subplots(figsize=(10, max(5, len(mi results df) * 0.3))
-                                sns.barplot(x='Mutual Information Score', y='Feature', data=mi results df, ax=ax mi ranker, palette="viridis")
-                                ax mi ranker.set title("Feature Ranking by MI with Risk Score")
-                                plt.tight_layout()
-                                st.pyplot(fig mi ranker)
-                                plt.close(fig mi ranker)
+                            st.success(f"Data prepared. Calculating MI for {len(processed names mi) features.")
+                            mi function to use = mutual info classif if "Binned" in mi chosen target type else mutual info regression
+                            effective discrete mask mi = discrete feature mask mi if len(discrete feature mask mi) == X mi prepared.shape[1] else 'auto'
+                            mi scores values = mi function to use(X mi prepared, y mi prepared, discrete features=effective discrete mask mi, random state=42)
+                            mi results df = pd DataFrame({'Feature': processed names mi, 'Mutual Information Score': mi scores values).sort values(by='Mutual Information Score', ascending=False)
+                            st subheader("Mutual Information Scores with Risk Score")
+                            st data frame(mi results df style format({'Mutual Information Score': "{:.4f}"))
+                            if not mi results df empty:
+                                fig mi ranker, ax mi ranker = plt subplots(figsize=(10, max(5, len(mi results df) * 0.3))
+                                sns barplot(x='Mutual Information Score', y='Feature', data=mi results df, ax=ax mi ranker, palette="viridis")
+                                ax mi ranker set title("Feature Ranking by MI with Risk Score")
+                                plt tight layout()
+                                st pyplot(fig mi ranker)
+                                plt close(fig mi ranker)
 
-st.markdown("---")
-st.markdown("App developed by your Expert Data Scientist, Antonio Medrano, CepSA")
+st markdown("---")
+st markdown("App developed by your Expert Data Scientist, Antonio Medrano, CepSA")
