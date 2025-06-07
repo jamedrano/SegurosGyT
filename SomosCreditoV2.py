@@ -433,7 +433,7 @@ with tabs[3]: # Customer Data Quality
         default_dqa_col = [df_dqa.columns[0]] if len(df_dqa.columns) > 0 else []
         cols_detail = st.multiselect("Select columns for detail:", options=df_dqa.columns.tolist(), default=default_dqa_col)
         for col in cols_detail:
-            with st.expander(f"'{col}' (Type: {df_dqa[col].dtype}):
+            with st.expander(f"'{col}' (Type: {df_dqa[col].dtype}"):
                 st.write(f"Unique: {df_dqa[col].nunique()}, Missing: {df_dqa[col].isnull().sum()} ({df_dqa[col].isnull().sum()/len(df_dqa)*100:.2f}%)")
                 if pd.api.types.is_numeric_dtype(df_dqa[col]):
                     st.dataframe(df_dqa[col].describe().to_frame().T)
