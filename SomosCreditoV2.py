@@ -120,7 +120,6 @@ def get_outliers_iqr(df, column_name):
     high_outliers = df[df[column_name] > upper_bound]
     return low_outliers, high_outliers, lower_bound, upper_bound
 
-# --- MODIFICATION: Updated Z-score function to provide a consistent output with IQR method. ---
 def get_outliers_zscore(df, column_name, threshold=3):
     """Identifies outliers using Z-score method and returns low/high outliers and bounds."""
     if df is None or df.empty or column_name not in df.columns or df[column_name].isnull().all():
@@ -134,15 +133,12 @@ def get_outliers_zscore(df, column_name, threshold=3):
     mean = col_data.mean()
     std_dev = col_data.std()
     
-    # Handle case where standard deviation is zero, preventing division by zero
     if std_dev == 0:
-        # No outliers if all values are the same
         return pd.DataFrame(), pd.DataFrame(), mean, mean
 
     lower_bound = mean - threshold * std_dev
     upper_bound = mean + threshold * std_dev
     
-    # Use original DataFrame's index to locate outliers
     low_outliers = df.loc[col_data[col_data < lower_bound].index]
     high_outliers = df.loc[col_data[col_data > upper_bound].index]
     
@@ -291,9 +287,6 @@ def prepare_mi_data(risk_scores_data, listado_data, id_col_listado, target_col_n
         except ValueError as e:
             return None, None, None, None, f"Error binning target '{y_mi_target_name}' for MI: {e}."
     else:
-        # --- FIX [LOGICAL]: Improved robustness of numeric conversion. ---
-        # REASON: The original code could fail if median was calculated on a mixed-type series.
-        # FIX: Explicitly convert to numeric first, then fill NaNs with the median of the now-clean numeric series.
         y_mi_numeric = pd.to_numeric(y_mi, errors='coerce')
         y_mi = y_mi_numeric.fillna(y_mi_numeric.median())
         
@@ -304,11 +297,11 @@ def prepare_mi_data(risk_scores_data, listado_data, id_col_listado, target_col_n
 st.set_page_config(layout="wide")
 st.title("🏍️ Motorcycle Loan Risk & Data Insights App")
 
-# --- FIX [CLEANLINESS]: Removed unused imports (unittest, time) at the top of the file. ---
-
 risk_score_component_names = ['late_payment_ratio', 'payment_coverage_ratio', 'outstanding_balance_ratio', 'collection_activity_count']
 st.sidebar.header("⚙️ Configuration")
 uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"])
+
+# --- MODIFICATION: Removed the user input for age column name ---
 
 default_grace_period = 5
 grace_period_input = st.sidebar.number_input("Grace Period (days)", min_value=0, max_value=30, value=default_grace_period, step=1)
@@ -353,6 +346,23 @@ if uploaded_file:
         lc_df_temp = pd.read_excel(uploaded_file, sheet_name="ListadoCreditos")
         processed_data_info += f"✅ 'ListadoCreditos' loaded ({lc_df_temp.shape[0]}r, {lc_df_temp.shape[1]}c).\n"
         listado_creditos_loaded = True
+        
+        # --- MODIFICATION: Calculate 'age' from 'fechaNacimiento' ---
+        if 'fechaNacimiento' in lc_df_temp.columns:
+            birth_dates = pd.to_datetime(lc_df_temp['fechaNacimiento'], errors='coerce')
+            valid_birth_dates_mask = birth_dates.notna()
+            if valid_birth_dates_mask.any():
+                lc_df_temp.loc[valid_birth_dates_mask, 'age'] = ((pd.Timestamp.now() - birth_dates[valid_birth_dates_mask]).dt.days / 365.25)
+                median_age = lc_df_temp['age'].median()
+                if pd.notna(median_age):
+                    lc_df_temp['age'].fillna(median_age, inplace=True)
+                lc_df_temp['age'] = lc_df_temp['age'].astype(int)
+                processed_data_info += f"✅ 'age' calculated from 'fechaNacimiento'.\n"
+            else:
+                processed_data_info += f"⚠️ 'fechaNacimiento' has no valid dates. 'age' not created.\n"
+        else:
+            processed_data_info += f"⚠️ 'fechaNacimiento' not found. 'age' not calculated.\n"
+            
         if numero_credito_col_name in lc_df_temp.columns:
             lc_df_temp[numero_credito_col_name] = lc_df_temp[numero_credito_col_name].astype(str)
             listado_creditos_df = lc_df_temp
@@ -364,7 +374,7 @@ if uploaded_file:
         processed_data_info += f"❌ Error 'ListadoCreditos': {e}\n"
         listado_creditos_loaded = False
     
-    st.sidebar.text_area("File Processing Log", processed_data_info, height=200)
+    st.sidebar.text_area("File Processing Log", processed_data_info, height=250)
 else:
     st.info("☝️ Upload an Excel file to begin.")
 
@@ -438,7 +448,7 @@ with tabs[2]: # Outlier Analysis
         
         elif outlier_method == "Z-score Method":
             z_threshold = st.number_input("Z-score Threshold:", min_value=1.0, max_value=5.0, value=3.0, step=0.1, key="z_threshold_input")
-            title_text = "Risk Score Outlier Identification (using Z-score Method)"
+            title_text = f"Risk Score Outlier Identification (using Z-score Method, Threshold={z_threshold})"
             st.info(f"The Z-score method defines outliers as data points with an absolute Z-score greater than the threshold ({z_threshold}). The Z-score measures how many standard deviations an observation is from the mean.")
             low_o, high_o, lb, ub = get_outliers_zscore(risk_scores_df, 'risk_score', threshold=z_threshold)
 
@@ -476,10 +486,6 @@ with tabs[2]: # Outlier Analysis
                         high_o_details.to_excel(writer, sheet_name='High Risk', index=False)
                     if not low_o.empty:
                         low_o_details = listado_creditos_df.merge(low_o, left_on=numero_credito_col_name, right_on='credito', how='inner')
-                        # --- FIX [CRITICAL LOGICAL]: Corrected a major copy-paste bug. ---
-                        # REASON: The original code was using `high_o_details.rename(...)` when it should have been `low_o_details.rename(...)`.
-                        # This resulted in the low-risk download containing high-risk data.
-                        # FIX: Changed the variable from `high_o_details` to `low_o_details`. I've also simplified the merge which avoids needing to rename/drop columns.
                         low_o_details.to_excel(writer, sheet_name='Low Risk', index=False)
                 excel_data_outlier = output_o.getvalue()
                 if excel_data_outlier:
@@ -504,7 +510,6 @@ with tabs[3]: # Customer Data Quality
     else:
         df_dqa = listado_creditos_df
         st.subheader("1. Overview")
-        # --- FIX [SYNTAX]: Fixed invalid f-string and removed trailing semicolon. ---
         st.write(f"Rows: {df_dqa.shape[0]}, Columns: {df_dqa.shape[1]}")
         with st.expander("Data Types"):
             st.dataframe(df_dqa.dtypes.reset_index().rename(columns={'index':'Column',0:'Type'}))
@@ -520,7 +525,6 @@ with tabs[3]: # Customer Data Quality
             st.success("No missing values found! 🎉")
             
         st.subheader("3. Duplicates")
-        # --- FIX [SYNTAX]: Fixed missing closing parenthesis in f-string. ---
         st.write(f"Full row duplicates: {df_dqa.duplicated().sum()}")
         if numero_credito_col_name in df_dqa.columns:
             st.write(f"Duplicates in ID column ('{numero_credito_col_name}'): {df_dqa.duplicated(subset=[numero_credito_col_name]).sum()}")
@@ -529,7 +533,6 @@ with tabs[3]: # Customer Data Quality
         default_dqa_col = [df_dqa.columns[0]] if len(df_dqa.columns) > 0 else []
         cols_detail = st.multiselect("Select columns for detailed analysis:", options=df_dqa.columns.tolist(), default=default_dqa_col)
         for col in cols_detail:
-            # --- FIX [SYNTAX]: Fixed missing closing parenthesis in expander. ---
             with st.expander(f"Analysis of '{col}' (Type: {df_dqa[col].dtype})"):
                 st.write(f"Unique Values: {df_dqa[col].nunique()}, Missing: {df_dqa[col].isnull().sum()} ({df_dqa[col].isnull().sum()/len(df_dqa)*100:.2f}%)")
                 if pd.api.types.is_numeric_dtype(df_dqa[col]):
@@ -663,7 +666,6 @@ with tabs[4]: # Pre-Loan Insights
                                     mi_df_tab4 = pd.DataFrame({'Feature': mi_features_to_analyze_tab4, 'MI': mi_scores_tab4}).sort_values(by='MI', ascending=False)
                                     st.dataframe(mi_df_tab4.style.format({'MI': "{:.4f}"}))
                                     if not mi_df_tab4.empty:
-                                        # --- FIX [SYNTAX]: Missing closing parenthesis for figsize tuple. ---
                                         fig_mi, ax_mi = plt.subplots(figsize=(10, max(5, len(mi_df_tab4)*0.3)))
                                         sns.barplot(x='MI', y='Feature', data=mi_df_tab4, ax=ax_mi)
                                         ax_mi.set_title("Mutual Information (Pre-Loan Insights)")
@@ -695,42 +697,53 @@ with tabs[5]: # Segment Performance Analyzer
                 st.warning("No matching records found between customer data and risk scores for segmentation.")
             else:
                 demographic_cols = [col for col in listado_creditos_df.columns if col not in [numero_credito_col_name] + required_risk_cols_for_segment and col != 'credito']
-                categorical_demographics = [col for col in demographic_cols if segment_data_full[col].dtype == 'object' or segment_data_full[col].nunique() < 20]
-                if not categorical_demographics:
-                    st.info("No suitable categorical demographic variables found in 'ListadoCreditos'.")
+                base_categorical_demographics = [col for col in demographic_cols if segment_data_full[col].dtype == 'object' or (segment_data_full[col].nunique() < 20 and col != 'age')]
+                
+                selectable_segment_vars = base_categorical_demographics.copy()
+                # --- MODIFICATION: Explicitly add the calculated 'age' column if it exists ---
+                if 'age' in segment_data_full.columns and 'age' not in selectable_segment_vars:
+                    selectable_segment_vars.insert(0, 'age')
+
+                if not selectable_segment_vars:
+                    st.info("No suitable demographic variables found for segmentation in 'ListadoCreditos'.")
                 else:
-                    selected_segment_vars = st.multiselect("Select demographic variables for segmentation:", options=categorical_demographics, default=categorical_demographics[0] if categorical_demographics else [])
-                    filters = {}
+                    default_selection = [selectable_segment_vars[0]] if selectable_segment_vars else []
+                    selected_segment_vars = st.multiselect("Select demographic variables for segmentation:", options=selectable_segment_vars, default=default_selection)
+                    
+                    query_parts = []
+
                     for var in selected_segment_vars:
-                        unique_levels = sorted(segment_data_full[var].dropna().unique().astype(str))
-                        if unique_levels:
-                            filters[var] = st.multiselect(f"Select levels for '{var}':", options=unique_levels, default=[unique_levels[0]])
+                        # --- MODIFICATION: Use slider for 'age', multiselect for others ---
+                        if var == 'age' and pd.api.types.is_numeric_dtype(segment_data_full[var]):
+                            min_age = int(segment_data_full[var].min())
+                            max_age = int(segment_data_full[var].max())
+                            if min_age < max_age:
+                                selected_age_range = st.slider(f"Select range for '{var}':", min_age, max_age, (min_age, max_age))
+                                query_parts.append(f"`{var}` >= {selected_age_range[0]} and `{var}` <= {selected_age_range[1]}")
+                            else:
+                                st.caption(f"Only one value ({min_age}) for '{var}', cannot create a range slider.")
                         else:
-                            st.caption(f"No selectable levels for '{var}'.")
+                            unique_levels = sorted(segment_data_full[var].dropna().unique().astype(str))
+                            if unique_levels:
+                                selected_levels = st.multiselect(f"Select levels for '{var}':", options=unique_levels, default=unique_levels[:1])
+                                if selected_levels:
+                                    str_levels_for_query = [f"'{str(level).replace("'", "\\'")}'" for level in selected_levels]
+                                    query_parts.append(f"`{var}` in ({', '.join(str_levels_for_query)})")
+                            else:
+                                st.caption(f"No selectable levels for '{var}'.")
                     
                     segmented_df = segment_data_full.copy()
-                    query_parts = []
-                    if filters:
-                        for var, levels in filters.items():
-                            if levels:
-                                str_levels_for_query = [f"'{str(level).replace("'", "\\'")}'" for level in levels]
-                                if str_levels_for_query:
-                                    query_parts.append(f"`{var}` in ({', '.join(str_levels_for_query)})")
-                        if query_parts:
-                            try:
-                                segmented_df = segmented_df.query(" and ".join(query_parts))
-                            except Exception as e:
-                                st.error(f"Error applying filters: {e}. Check column/level names for special chars.")
-                                segmented_df = pd.DataFrame()
+                    if query_parts:
+                        try:
+                            final_query = " and ".join(query_parts)
+                            segmented_df = segmented_df.query(final_query)
+                        except Exception as e:
+                            st.error(f"Error applying filters: {e}. Check column/level names for special chars.")
+                            segmented_df = pd.DataFrame()
                                 
                     if not segmented_df.empty:
                         st.markdown("---")
                         st.subheader(f"Performance for Selected Segment ({len(segmented_df)} loans)")
-                        
-                        def format_value_segment_tab(val, metric_name):
-                            if pd.isna(val): return "N/A"
-                            if 'count' in metric_name: return f"{val:.2f}"
-                            return f"{val:.4f}"
                         
                         summary_data = []
                         for metric in ['risk_score'] + risk_score_component_names:
@@ -741,18 +754,14 @@ with tabs[5]: # Segment Performance Analyzer
                             })
                         
                         comparison_df = pd.DataFrame(summary_data)
-                        comparison_df['Segment Average'] = comparison_df.apply(lambda row: format_value_segment_tab(row['Segment Average'], row['Metric']), axis=1)
-                        comparison_df['Overall Average'] = comparison_df.apply(lambda row: format_value_segment_tab(row['Overall Average'], row['Metric']), axis=1)
+                        st.dataframe(comparison_df.set_index('Metric').style.format("{:.4f}"))
                         
-                        st.dataframe(comparison_df.set_index('Metric'))
-                        
-                    # --- FIX [LOGICAL]: Simplified conditional logic for displaying user guidance. ---
-                    elif filters and not query_parts:
-                        st.info("Please select specific levels for the chosen demographic variables to see segment results.")
-                    elif filters and query_parts and segmented_df.empty:
+                    elif selected_segment_vars and not any(f.startswith(f"`{var}` in") for f in query_parts if var != 'age') and not any('age' in q for q in query_parts):
+                         st.info("Please select specific levels/ranges for the chosen demographic variables to see segment results.")
+                    elif selected_segment_vars and query_parts and segmented_df.empty:
                         st.info("No customers found matching all selected criteria.")
                     else:
-                        st.info("Select demographic variables and their levels to analyze segment performance.")
+                        st.info("Select demographic variables and their levels/ranges to analyze segment performance.")
 
 with tabs[6]: # Feature MI Ranker
     st.header(tab_titles[6])
@@ -768,7 +777,6 @@ with tabs[6]: # Feature MI Ranker
         if "Binned" in mi_chosen_target_type:
             mi_num_bins = st.slider("Number of bins for Risk Score (MI Ranker):", 2, 10, 3, 1, key="mi_ranker_bins")
         
-        # --- FIX [SYNTAX]: Corrected all variable name typos and syntax errors in this block. ---
         mi_available_features = [col for col in listado_creditos_df.columns if col not in [numero_credito_col_name]]
         if not mi_available_features:
             st.error("No features available from 'ListadoCreditos' for MI ranking.")
