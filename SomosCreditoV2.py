@@ -120,21 +120,33 @@ def get_outliers_iqr(df, column_name):
     high_outliers = df[df[column_name] > upper_bound]
     return low_outliers, high_outliers, lower_bound, upper_bound
 
-# --- FIX [LOGICAL]: Indexing bug in z-score calculation. ---
-# REASON: The original code calculated z-scores on a dropped-NA series but then tried to use the resulting boolean mask on the original DataFrame.
-# This would cause an `IndexingError` if any NaNs were present.
-# FIX: Store the non-NA data, calculate z-scores, and then use the index of the outliers to select from the original DataFrame.
+# --- MODIFICATION: Updated Z-score function to provide a consistent output with IQR method. ---
 def get_outliers_zscore(df, column_name, threshold=3):
+    """Identifies outliers using Z-score method and returns low/high outliers and bounds."""
     if df is None or df.empty or column_name not in df.columns or df[column_name].isnull().all():
         logger.warning("get_outliers_zscore: Invalid input.")
         return pd.DataFrame(), pd.DataFrame(), np.nan, np.nan
     
     col_data = df[column_name].dropna()
-    z_scores = np.abs(zscore(col_data))
-    outlier_indices = col_data[z_scores > threshold].index
-    outliers = df.loc[outlier_indices]
+    if col_data.empty:
+        return pd.DataFrame(), pd.DataFrame(), np.nan, np.nan
+        
+    mean = col_data.mean()
+    std_dev = col_data.std()
     
-    return outliers, pd.DataFrame(), np.nan, np.nan # Return structure kept as original
+    # Handle case where standard deviation is zero, preventing division by zero
+    if std_dev == 0:
+        # No outliers if all values are the same
+        return pd.DataFrame(), pd.DataFrame(), mean, mean
+
+    lower_bound = mean - threshold * std_dev
+    upper_bound = mean + threshold * std_dev
+    
+    # Use original DataFrame's index to locate outliers
+    low_outliers = df.loc[col_data[col_data < lower_bound].index]
+    high_outliers = df.loc[col_data[col_data > upper_bound].index]
+    
+    return low_outliers, high_outliers, lower_bound, upper_bound
 
 # --- Helper function for Cramer's V ---
 def cramers_v(confusion_matrix):
@@ -409,8 +421,29 @@ with tabs[1]: # Risk EDA
 with tabs[2]: # Outlier Analysis
     st.header(tab_titles[2])
     if risk_scores_df is not None and not risk_scores_df.empty:
-        low_o, high_o, lb, ub = get_outliers_iqr(risk_scores_df, 'risk_score')
-        st.subheader("Risk Score Outlier Identification (using IQR Method)")
+        st.subheader("Outlier Detection Configuration")
+        outlier_method = st.selectbox(
+            "Select Outlier Detection Method:",
+            ("IQR Method", "Z-score Method"),
+            key="outlier_method_select"
+        )
+        
+        low_o, high_o, lb, ub = pd.DataFrame(), pd.DataFrame(), np.nan, np.nan
+        title_text = ""
+        
+        if outlier_method == "IQR Method":
+            title_text = "Risk Score Outlier Identification (using IQR Method)"
+            st.info("The IQR (Interquartile Range) method defines outliers as observations that fall below Q1 - 1.5*IQR or above Q3 + 1.5*IQR.")
+            low_o, high_o, lb, ub = get_outliers_iqr(risk_scores_df, 'risk_score')
+        
+        elif outlier_method == "Z-score Method":
+            z_threshold = st.number_input("Z-score Threshold:", min_value=1.0, max_value=5.0, value=3.0, step=0.1, key="z_threshold_input")
+            title_text = "Risk Score Outlier Identification (using Z-score Method)"
+            st.info(f"The Z-score method defines outliers as data points with an absolute Z-score greater than the threshold ({z_threshold}). The Z-score measures how many standard deviations an observation is from the mean.")
+            low_o, high_o, lb, ub = get_outliers_zscore(risk_scores_df, 'risk_score', threshold=z_threshold)
+
+        st.markdown("---")
+        st.subheader(title_text)
         if not np.isnan(lb):
             st.write(f"**Lower Bound:** `{lb:.4f}` | **Upper Bound:** `{ub:.4f}`")
         else:
