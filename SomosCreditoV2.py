@@ -413,7 +413,7 @@ with tabs[3]: # Customer Data Quality
     else:
         df_dqa = listado_creditos_df
         st.subheader("1. Overview")
-        st.write(f"Rows: {df_dqa.shape[0]}, Columns: {df_dqa.shape[1]});
+        st.write(f"Rows: {df_dqa.shape[0]}, Columns: {df_dqa.shape[1]}");
         with st.expander("Data Types"):
             st.dataframe(df_dqa.dtypes.reset_index().rename(columns={'index':'Col',0:'Type'}))
         st.subheader("2. Missing Values")
