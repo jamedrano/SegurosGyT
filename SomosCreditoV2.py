@@ -132,7 +132,7 @@ def prepare_preloan_insights_data(risk_df_with_components, listado_df, id_col_li
         return None, None, None, None, None, f"ID column '{id_col_listado}' not found in customer data."
     if target_col_name_in_risk_scores not in risk_df_with_components.columns:
         logger.error(f"prepare_preloan_insights_data: Target column '{target_col_name_in_risk_scores}' not found in risk scores.")
-        return None, None, None, None, None, f"Target column '{target_col_name_in_risk_scores}' not found in risk scores."
+        return None, None, None, None, None, f"Target column '{target_col_name_in_right_scores}' not found in risk scores."
 
     listado_copy = listado_df.copy()
     risk_scores_copy = risk_df_with_components.copy()
@@ -162,7 +162,7 @@ def prepare_preloan_insights_data(risk_df_with_components, listado_df, id_col_li
     if bin_target_flag:
         if y_series.nunique() <= 1:
             logger.error(f"prepare_preloan_insights_data: Target '{target_col_name_in_risk_scores}' has <=1 unique value, cannot bin.")
-            return None, None, None, None, None, f"Target '{target_col_name_in_right_scores}' has <=1 unique value, cannot bin."
+            return None, None, None, None, None, f"Target '{target_col_name_in_risk_scores}' has <=1 unique value, cannot bin."
         try:
             discretizer = KBinsDiscretizer(n_bins=num_bins_for_target, encode='ordinal', strategy='quantile', subsample=None)
             binned_target_values = discretizer.fit_transform(y_series.to_frame())
@@ -197,7 +197,7 @@ def prepare_mi_data(risk_scores_data, listado_data, id_col_listado, target_col_n
         logger.error(f"prepare_mi_data: ID column '{id_col_listado}' not found in customer data.")
         return None, None, None, None, f"ID column '{id_col_listado}' not found in customer data."
     if target_col_name_in_risk_scores not in risk_scores_data.columns:
-        logger.error(f"prepare_mi_data: Target column '{target_col_name_in_risk_scores}' not found in risk scores.")
+        logger.error(f"prepare_mi_data: Target column '{target_col_name_in_right_scores}' not found in risk scores.")
         return None, None, None, None, f"Target column '{target_col_name_in_risk_scores}' not found in risk scores."
     listado_copy = listado_data.copy(); risk_scores_copy = risk_scores_data.copy()
     listado_copy[id_col_listado] = listado_copy[id_col_listado].astype(str)
@@ -329,7 +329,7 @@ with tabs[0]: # Risk Scores
 
 with tabs[1]: # Risk EDA
     st.header(tab_titles[1])
-    if risk_scores_df is not None and not risk_scores_df.empty:
+    if risk_scores_df is not not None and not risk_scores_df.empty:
         st.subheader("Risk Score Distribution")
         st.dataframe(risk_scores_df['risk_score'].describe().to_frame().T.style.format("{:.4f}"))
         col1, col2 = st.columns(2)
@@ -372,7 +372,7 @@ with tabs[2]: # Outlier Analysis
         else:
             st.write("No low-risk outliers.")
         st.markdown("---"); st.subheader("Download Outlier Details")
-        if listado_creditos_loaded and listado_creditos_df is not None and numero_credito_col_name in listado_creditos_df.columns:
+        if listado_creditos_loaded and listado_creditos_df is not not None and numero_credito_col_name in listado_creditos_df.columns:
             if not high_o.empty or not low_o.empty:
                 output_o = io.BytesIO()
                 with pd.ExcelWriter(output_o, engine='xlsxwriter') as writer:
@@ -392,7 +392,7 @@ with tabs[2]: # Outlier Analysis
                         low_o_details.to_excel(writer, sheet_name='Low Risk', index=False)
                 excel_data_outlier = output_o.getvalue()
                 if excel_data_outlier:
-                    st.download_button(label="📥 Download Outlier Details", data=excel_data_outlier, file_name=f"outliers_detailed_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    st.download_button(label="Download Outlier Details", data=excel_data_outlier, file_name=f"outliers_detailed_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 else:
                     st.warning("Could not generate outlier details Excel file.")
             else:
@@ -413,7 +413,7 @@ with tabs[3]: # Customer Data Quality
     else:
         df_dqa = listado_creditos_df
         st.subheader("1. Overview")
-        st.write(f"Rows: {df_dqa.shape[0]}, Columns: {df_dqa.shape[1]}");
+        st.write(f"Rows: {df_dqa.shape[0]}, Columns: {df_dqa.shape[1]});
         with st.expander("Data Types"):
             st.dataframe(df_dqa.dtypes.reset_index().rename(columns={'index':'Col',0:'Type'}))
         st.subheader("2. Missing Values")
@@ -467,7 +467,7 @@ with tabs[4]: # Pre-Loan Insights
                         # Using prepare_preloan_insights_data for this tab
                         prep_result_tab4 = prepare_preloan_insights_data(
                             risk_scores_df, listado_creditos_df, numero_credito_col_name,
-                            'risk_score', selected_cols_fi_prev_tab,
+                            'risk_score', selected_cols_fii_prev_tab,
                             "Binned" in chosen_target_type_prev_tab, num_bins_fi_prev_tab
                         )
                         # Unpack results for Tab 4
@@ -508,7 +508,7 @@ with tabs[4]: # Pre-Loan Insights
                             if categorical_features_to_group_tab4:
                                 results_groupwise_tab4 = []
                                 for feat in categorical_features_to_group_tab4:
-                                    if features_for_analysis_df_tab4[feat].nunique() < 2 or features_for_analysis_tab4[feat].nunique() > 50:
+                                    if features_for_analysis_df_tab4[feat].nunique() < 2 or features_for_analysis_df_tab4[feat].nunique() > 50:
                                         continue
                                     plot_target_groupwise_tab4 = pd.to_numeric(target_series_tab4, errors='coerce') if "Raw" in chosen_target_type_prev_tab else target_series_tab4
                                     try:
@@ -519,66 +519,66 @@ with tabs[4]: # Pre-Loan Insights
                                         fig_box_fi, ax_box_fi = plt.subplots()
                                         sns.boxplot(x=features_for_analysis_df_tab4[feat].astype(str), y=plot_target_groupwise_tab4, ax=ax_box_fi, order=order)
                                         ax_box_fi.set_title(f"{final_target_name_tab4} by {feat}")
-                        ax_box_fi.tick_params(axis='x', rotation=45)
-                        plt.tight_layout()
-                        st.pyplot(fig_box_fi)
-                        plt.close(fig_box_fi)
-                        if "Binned" in chosen_target_type_prev_tab:
-                            ct = pd.crosstab(features_for_analysis_df_tab4[feat], target_series_tab4);
-                            if ct.size > 0 and 0 not in ct.shape and ct.sum().sum() > 0:
-                                try:
-                                    chi2, p, _, _ = chi2_contingency(ct);
-                                    cv = cramers_v(ct.values);
-                                    results_groupwise_tab4.append({'Feature': feat, 'Test': 'Chi2', 'Stat': chi2, 'p': p, "CramerV": cv})
-                                except ValueError:
-                                    pass
-                        else:
-                            groups = [target_series_tab4[features_for_analysis_df_tab4[feat] == cat] for cat in features_for_analysis_df_tab4[feat].unique() if target_series_tab4[features_for_analysis_df_tab4[feat] == cat].shape[0] > 1]
-                            if len(groups) > 1:
-                                try:
-                                    f_stat, p_anova = f_oneway(*groups);
-                                    results_groupwise_tab4.append({'Feature': feat, 'Test': 'ANOVA', 'Stat': f_stat, 'p': p_anova, "CramerV": np.nan})
-                                except ValueError:
-                                    pass
-                    if results_groupwise_tab4:
-                        st.dataframe(pd.DataFrame(results_groupwise_tab4).style.format({'Stat': "{:.3f}", 'p': "{:.3g}", "CramerV": "{:.3f}"))
-                    else:
-                        st.info("No group tests for selected categories.")
-                else:
-                    st.info("No categorical features selected for group comparison.")
-                # C. Mutual Information (for Tab 4)
-                st.markdown("---"); st.subheader("C. Mutual Information")
-                mi_features_to_analyze_tab4 = [f for f in actual_features_analyzed_tab4 if f in selected_cols_fi_prev_tab]
-                if mi_features_to_analyze_tab4:
-                    mi_features_df_tab4 = pd.DataFrame(index=features_for_analysis_df_tab4.index);
-                    label_encoders_tab4 = {} # For potential inverse transform if needed, not used here
-                    discrete_mask_tab4 = []
-                    for feat in mi_features_to_analyze_tab4: # Process only selected features
-                        if not pd.api.types.is_numeric_dtype(original_feature_dtypes_tab4.get(feat)):
-                            le = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
-                            mi_features_df_tab4[feat] = le.fit_transform(features_for_analysis_df_tab4[[feat]]) # Use original data from features_for_analysis_df_tab4
-                            discrete_mask_tab4.append(True)
-                        else:
-                            mi_features_df_tab4[feat] = features_for_analysis_df_tab4[feat].fillna(features_for_analysis_df_tab4[feat].median())
-                            discrete_mask_tab4.append(mi_features_df_tab4[feat].nunique() < 20)
-                    if not mi_features_df_tab4.empty:
-                        mi_target_tab4 = target_series_tab4.astype(int) if "Binned" in chosen_target_type_prev_tab else pd.to_numeric(target_series_tab4, errors='coerce').fillna(target_series_tab4.median())
-                        mi_func_tab4 = mutual_info_classif if "Binned" in chosen_target_type_prev_tab else mutual_info_regression
-                        effective_discrete_mask_tab4 = discrete_mask_tab4 if len(discrete_mask_tab4) == mi_features_df_tab4.shape[1] else 'auto'
-                        mi_scores_tab4 = mi_func_tab4(mi_features_df_tab4, mi_target_tab4, discrete_features=effective_discrete_mask_tab4, random_state=42)
-                        mi_df_tab4 = pd.DataFrame({'Feature': mi_features_to_analyze_tab4, 'MI': mi_scores_tab4).sort_values(by='MI', ascending=False)
-                        st.dataframe(mi_df_tab4.style.format({'MI': "{:.4f}"))
-                        if not mi_df_tab4.empty:
-                            fig_mi, ax_mi = plt.subplots(figsize=(10, max(5, len(mi_df_tab4)*0.3))
-                            sns.barplot(x='MI',y='Feature',data=mi_df_tab4,ax=ax_mi)
-                            ax_mi.set_title("Mutual Information (Pre-Loan Insights)")
-                            plt.tight_layout()
-                            st.pyplot(fig_mi)
-                            plt.close(fig_mi)
-                    else:
-                        st.info("No features for MI from selection.")
-                else:
-                    st.info("No features selected for MI.")
+                                        ax_box_fi.tick_params(axis='x', rotation=45)
+                                        plt.tight_layout()
+                                        st.pyplot(fig_box_fi)
+                                        plt.close(fig_box_fi)
+                                    if "Binned" in chosen_target_type_prev_tab:
+                                        ct = pd.crosstab(features_for_analysis_df_tab4[feat], target_series_tab4);
+                                        if ct.size > 0 and 0 not in ct.shape and ct.sum().sum() > 0:
+                                            try:
+                                                chi2, p, _, _ = chi2_contingency(ct);
+                                                cv = cramers_v(ct.values);
+                                                results_groupwise_tab4.append({'Feature': feat, 'Test': 'Chi2', 'Stat': chi2, 'p': p, "CramerV": cv})
+                                            except ValueError:
+                                                pass
+                                    else:
+                                        groups = [target_series_tab4[features_for_analysis_df_tab4[feat] == cat] for cat in features_for_analysis_df_tab4[feat].unique() if target_series_tab4[features_for_analysis_df_tab4[feat] == cat].shape[0] > 1]
+                                        if len(groups) > 1:
+                                            try:
+                                                f_stat, p_anova = f_oneway(*groups);
+                                                results_groupwise_tab4.append({'Feature': feat, 'Test': 'ANOVA', 'Stat': f_stat, 'p': p_anova, "CramerV": np.nan})
+                                            except ValueError:
+                                                pass
+                                if results_groupwise_tab4:
+                                    st.dataframe(pd.DataFrame(results_groupwise_tab4).style.format({'Stat': "{:.3f}", 'p': "{:.3g}", "CramerV": "{:.3f}"))
+                                else:
+                                    st.info("No group tests for selected categories.")
+                            else:
+                                st.info("No categorical features selected for group comparison.")
+                            # C. Mutual Information (for Tab 4)
+                            st.markdown("---"); st.subheader("C. Mutual Information")
+                            mi_features_to_analyze_tab4 = [f for f in actual_features_analyzed_tab4 if f in selected_cols_fi_prev_tab]
+                            if mi_features_to_analyze_tab4:
+                                mi_features_df_tab4 = pd.DataFrame(index=features_for_analysis_df_tab4.index);
+                                label_encoders_tab4 = {} # For potential inverse transform if needed, not used here
+                                discrete_mask_tab4 = []
+                                for feat in mi_features_to_analyze_tab4: # Process only selected features
+                                    if not pd.api.types.is_numeric_dtype(original_feature_dtypes_tab4.get(feat)):
+                                        le = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+                                        mi_features_df_tab4[feat] = le.fit_transform(features_for_analysis_df_tab4[[feat]]) # Use original data from features_for_analysis_df_tab4
+                                        discrete_mask_tab4.append(True)
+                                    else:
+                                        mi_features_df_tab4[feat] = features_for_analysis_df_tab4[feat].fillna(features_for_analysis_df_tab4[feat].median())
+                                        discrete_mask_tab4.append(mi_features_df_tab4[feat].nunique() < 20)
+                                if not mi_features_df_tab4.empty:
+                                    mi_target_tab4 = target_series_tab4.astype(int) if "Binned" in chosen_target_type_prev_tab else pd.to_numeric(target_series_tab4, errors='coerce').fillna(target_series_tab4.median())
+                                    mi_func_tab4 = mutual_info_classif if "Binned" in chosen_target_type_prev_tab else mutual_info_regression
+                                    effective_discrete_mask_tab4 = discrete_mask_tab4 if len(discrete_mask_tab4) == mi_features_df_tab4.shape[1] else 'auto'
+                                    mi_scores_tab4 = mi_func_tab4(mi_features_df_tab4, mi_target_tab4, discrete_features=effective_discrete_mask_tab4, random_state=42)
+                                    mi_df_tab4 = pd.DataFrame({'Feature': mi_features_to_analyze_tab4, 'MI': mi_scores_tab4).sort_values(by='MI', ascending=False)
+                                    st.dataframe(mi_df_tab4.style.format({'MI': "{:.4f}"))
+                                    if not mi_df_tab4.empty:
+                                        fig_mi, ax_mi = plt.subplots(figsize=(10, max(5, len(mi_df_tab4)*0.3))
+                                        sns.barplot(x='MI',y='Feature',data=mi_df_tab4,ax=ax_mi)
+                                        ax_mi.set_title("Mutual Information (Pre-Loan Insights)")
+                                        plt.tight_layout()
+                                        st.pyplot(fig_mi)
+                                        plt.close(fig_mi)
+                                else:
+                                    st.info("No features for MI from selection.")
+                            else:
+                                st.info("No features selected for MI.")
 
 with tabs[5]: # Segment Performance Analyzer
     st.header(tab_titles[5])
@@ -645,11 +645,11 @@ with tabs[5]: # Segment Performance Analyzer
                                 return f"{val:.4f}"
                             if 'ratio' in metric_name:
                                 return f"{val:.4f}"
-                            if 'count' in metric name:
+                            if 'count' in metric_name:
                                 return f"{val:.2f}"
                             return f"{val:.4f}"
                         segment_summary_df['Segment Average Formatted'] = segment_summary_df.apply(lambda row: format_value_segment_tab(row['Segment Average'], row['Metric']), axis=1)
-                        st.dataframe(segment_summary_df[['Metric', 'Segment Average Formatted']].set_index('Metric'))
+                        st.dataframe(segment_summary_df[['Metric', 'Segment Average Formatted']].set_index('Metric')
                         with st.expander("Compare with Overall Portfolio Averages"):
                             avg_risk_score_overall = risk_scores_df['risk_score'].mean()
                             avg_components_overall = risk_scores_df[risk_score_component_names].mean().to_dict()
@@ -660,7 +660,7 @@ with tabs[5]: # Segment Performance Analyzer
                             comparison_df = pd.merge(segment_summary_df[['Metric','Segment Average']], overall_summary_df, on="Metric")
                             for col_to_format in ['Segment Average', 'Overall Average']:
                                 comparison_df[col_to_format + ' Formatted'] = comparison_df.apply(lambda row: format_value_segment_tab(row[col_to_format], row['Metric']), axis=1)
-                            st.dataframe(comparison_df[['Metric', 'Segment Average Formatted', 'Overall Average Formatted']].set_index('Metric'))
+                            st.dataframe(comparison_df[['Metric', 'Segment Average Formatted', 'Overall Average Formatted']].set_index('Metric')
                     elif filters and not query_parts and any(filters.values()):
                         st.info("Please select specific levels for the chosen demographic variables.")
                     elif filters and query parts and segmented_df.empty:
@@ -685,16 +685,16 @@ with tabs[6]: # Feature MI Ranker
         if not mi_available_features:
             st.error("No features available from 'ListadoCreditos' for MI ranking.")
         else:
-            default_mi_cols = mi_available_features[:min(5, len(mi_available_features))]
-            selected_cols_for_mi = st.multiselect("Select features from 'ListadoCreditos' for MI calculation:", options=mi_available features, default=default_mi_cols, key="mi_ranker_features")
-            if st.button("📈 Calculate Mutual Information", key="mi_ranker_button"):
+            default_mi_cols = mi_available_features[:min(5, len(mi_available_features))
+            selected_cols_for_mi = st.multiselect("Select features from 'ListadoCreditos' for MI calculation:", options=mi available features, default=default_mi_cols, key="mi_ranker_features")
+            if st.button("Calculate Mutual Information", key="mi_ranker_button"):
                 if not selected_cols_for_mi:
                     st.warning("Please select at least one feature for MI calculation.")
                 else:
                     with st.spinner("Preparing data and calculating Mutual Information..."):
                         X_mi_prepared, y_mi_prepared, processed_names_mi, discrete_feature_mask_mi, mi_error_message = prepare_mi_data(risk_scores_df, listado_creditos_df, numero_credito_col_name, 'risk_score', selected_cols_for_mi, "Binned" in mi_chosen_target_type, mi_num_bins)
                         if mi_error_message:
-                            st.error(f"MI Data Preparation Error: {mi_error message}")
+                            st.error(f"MI Data Preparation Error: {mi error message}
                         elif X_mi_prepared is None or y_mi_prepared is None or not processed_names_mi:
                             st.error("Failed to prepare data for MI calculation. Check selected features or data integrity.")
                         else:
@@ -706,7 +706,7 @@ with tabs[6]: # Feature MI Ranker
                             st.subheader("Mutual Information Scores with Risk Score")
                             st.dataframe(mi results df.style.format({'Mutual Information Score': "{:.4f}"))
                             if not mi results df.empty:
-                                fig_mi ranker, ax_mi ranker = plt.subplots(figsize=(10, max(5, len(mi results df) * 0.3))
+                                fig_mi ranker, ax mi ranker = plt.subplots(figsize=(10, max(5, len(mi results df) * 0.3))
                                 sns.barplot(x='Mutual Information Score', y='Feature', data=mi results df, ax=ax mi ranker, palette="viridis")
                                 ax mi ranker.set title("Feature Ranking by MI with Risk Score")
                                 plt.tight_layout()
